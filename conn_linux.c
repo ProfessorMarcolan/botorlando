@@ -53,10 +53,10 @@ enum {
 	max_domain_buffer = 253 + max_port + 1 + 1,
 };
 static int
-parseaddr(char* address, char* host, char* port)
+parseaddr(char *address, char *host, char *port)
 {
 	int len;
-	char* tmp;
+	char *tmp;
 
 	if((len = strlen(address)) > max_domain_buffer) {
 		return -1;
@@ -75,12 +75,12 @@ parseaddr(char* address, char* host, char* port)
 }
 
 int
-dial(char* address)
+dial(char *address)
 {
 	int fd, porti;
 	char *host, *port;
 	struct sockaddr_in addr;
-	struct hostent* url;
+	struct hostent *url;
 
 	host = malloc(max_domain_buffer);
 	if(host == NULL) {
@@ -107,12 +107,12 @@ dial(char* address)
 	memset(&addr, 0, sizeof addr);
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(porti);
-	addr.sin_addr = *((struct in_addr*)url->h_addr);
+	addr.sin_addr = *((struct in_addr *)url->h_addr);
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if(fd < 0)
 		goto ret;
 
-	if(connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+	if(connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		fd = -1;
 		goto ret;
 	}

@@ -78,7 +78,7 @@ char *test[] = {
 };
 
 static void
-sysfatal(char* fmt, ...)
+sysfatal(char *fmt, ...)
 {
 	va_list argp;
 	va_start(argp, fmt);
@@ -88,20 +88,19 @@ sysfatal(char* fmt, ...)
 }
 
 enum { MAX_CONNBUF = 8192 };
-int hash(char*);
+int hash(char *);
 int
-main(int argc, char** argv)
+main(int argc, char **argv)
 {
 	int fd, ulen, plen;
 	char *user, *passwd, *auth;
 	Strval *tmp;
-	int n = sizeof(test)/sizeof(test[0]);
-	type t = {.typ=10, .v=42};
+	int n = sizeof(test) / sizeof(test[0]);
+	type t = {.typ = 10, .v = 42};
 	for(int i = 0; i < n; i++) {
 		printf("%s %u\n", test[i], hash(test[i]));
 	}
-	
-	
+
 	exit(1);
 	user = getenv("TWITCH_USER");
 	passwd = getenv("TWITCH_OAUTH");

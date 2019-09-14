@@ -1,6 +1,6 @@
 #ifndef CONN_H
 #define CONN_H
 
-int dial(char*);
+int dial(char *);
 
 #endif

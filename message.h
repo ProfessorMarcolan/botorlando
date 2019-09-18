@@ -1,25 +1,51 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-typedef struct message message;
-struct message {
-	int len;
-	uint8_t *buf;
+enum {
+	EMINIT = 1,
+	EMGROW = 2,
 };
 
-typedef struct type type;
-struct type {
-	int typ;
-	int v;
+typedef struct emote emote;
+struct emote {
+	int id;
+	int *i;
 };
+
+typedef struct emotesarr emotesarr;
+struct emotesarr {
+	int nval;
+	int max;
+	emote *v;
+};
+
+typedef struct meta meta;
+struct meta {
+	emotesarr emotes;
+};
+
+enum HASHVAL {
+	HNUM,
+	HSTR,
+	HARR,
+};
+
+typedef struct val val;
+struct val {
+	enum HASHVAL typ;
+	union {
+	} v;
+};
+
 typedef struct Strval Strval;
 struct Strval {
 	char *key;
-	type val;
+	val v;
 	Strval *next;
 };
 
-int parse_message(message);
-Strval *lookup(char *, bool, type);
+Strval *lookup(char *, int, val);
+
+int parse_msg(uint8_t *, int);
 
 #endif

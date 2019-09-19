@@ -24,17 +24,23 @@ struct meta {
 	emotesarr emotes;
 };
 
+enum { MAX_CONNBUF = 8192 };
+
 enum HASHVAL {
 	HNUM,
 	HSTR,
 	HARR,
+	HFUNC,
 };
 
 typedef struct val val;
 struct val {
 	enum HASHVAL typ;
 	union {
-	} v;
+		char *str;
+		int num;
+		int (*fn)(char *);
+	};
 };
 
 typedef struct Strval Strval;
@@ -43,8 +49,6 @@ struct Strval {
 	val v;
 	Strval *next;
 };
-
-Strval *lookup(char *, int, val);
 
 int parse_msg(uint8_t *, int);
 

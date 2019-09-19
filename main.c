@@ -21,7 +21,7 @@ static const char caps[] =
     "CAP REQ :twitch.tv/membership\r\n";
 
 static const char join[] =
-    "JOIN #marcolan\r\n";
+    "JOIN #eubyt\r\n";
 
 static void
 sysfatal(char *fmt, ...)
@@ -33,9 +33,8 @@ sysfatal(char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-enum { MAX_CONNBUF = 8192 };
-
 static uint8_t connbuf[MAX_CONNBUF];
+extern uint8_t connout[MAX_CONNBUF];
 
 int
 main(int argc, char **argv)
@@ -73,16 +72,16 @@ main(int argc, char **argv)
 			fprintf(stderr, "read: %s\n", strerror(errno));
 			continue;
 		}
-		if(parse_msg(connbuf, n) < 0) {
-			fprintf(stderr, "parse_msg: %s\n", strerror(errno));
-			continue;
-		}
 		if(!wrote) {
 			if(write(fd, join, (sizeof join) - 1) < 0) {
 				sysfatal("write: %s\n", strerror(errno));
 			}
 			wrote = 1;
 		}
-		//write(1, connbuf, n);
+		if((n = parse_msg(connbuf, n)) < 0) {
+			fprintf(stderr, "parse_msg: %s\n", strerror(errno));
+			continue;
+		}
+		write(fd, connout, n);
 	}
 }

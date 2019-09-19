@@ -5,20 +5,25 @@ CFLAGS = -g -O0 -Wall
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)
 OBJ = $(SRC:.c=.o)
+PROG = bot
+IP = irc.chat.twitch.tv:6667
 
-all: bot
+all: $(PROG)
 
 .o: $(SRC)
 	$(CC) $(CFLAGS) -o $< $>
 
-bot: $(OBJ)
+$(PROG): $(OBJ)
 	$(CC) $(LDFLAGS) -o $@ $^
 
-run: bot
-	@eval $(./env.sh); ./bot irc.chat.twitch.tv:6667
+run: $(PROG)
+	@sh -c 'env `cat env.sh` ./$(PROG) $(IP)'
 
 clean:
-	rm -f $(OBJ) bot
+	rm -f $(OBJ) $(PROG)
+
+gdb: $(PROG)
+	@sh -c 'env `cat env.sh` gdb --quiet --args $(PROG) $(IP)'
 
 fmt:
 	clang-format -i $(SRC) $(HDR)

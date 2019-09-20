@@ -82,13 +82,14 @@ dial(char *address)
 	struct sockaddr_in addr;
 	struct hostent *url;
 
+	port = NULL;
 	host = malloc(max_domain_buffer);
-	if(host == NULL) {
+	if(!host) {
 		fd = -1;
 		goto ret;
 	}
 	port = malloc(6);
-	if(port == NULL) {
+	if(!port) {
 		fd = -1;
 		goto ret;
 	}
@@ -99,7 +100,7 @@ dial(char *address)
 
 	porti = atoi(port);
 	url = gethostbyname(host);
-	if(url == NULL) {
+	if(!url) {
 		fd = -1;
 		goto ret;
 	}

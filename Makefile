@@ -1,6 +1,6 @@
-CC = musl-gcc
-LDFLAGS = -static
-CFLAGS = -g -O0 -Wall
+CC = musl-clang
+LDFLAGS = -static -Wno-unused-command-line-argument
+CFLAGS = -g -O0 -Wall -Wno-unused-command-line-argument
 
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)

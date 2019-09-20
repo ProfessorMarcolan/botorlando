@@ -83,36 +83,6 @@ addemote(meta *m, emote e)
 	return m->emotes.nval++;
 }
 
-static char *commands[] =
-    {
-        "PRIVMSG",
-        "ROOMSTATE",
-        "NOTICE",
-        "CLEARMSG",
-        "HOSTTARGET",
-        "CLEARCHAT",
-        "PING",
-        "MODE",
-        "RECONNECT",
-        "USERNOTICE",
-        "USERSTATE",
-        "NAMES",
-        "PART",
-        "JOIN",
-        "CAP",
-        "001", /* RPL_WELCOME */
-        "002", /* RPL_YOURHOST */
-        "003", /* RPL_CREATED */
-        "004", /* RPL_MYINFO */
-        "372", /* RPL_MOTD */
-        "375", /* RPL_MOTDSTART */
-        "376", /* RPL_ENDOFMOTD */
-        "353", /* RPL_NAMREPLY */
-        "366", /* RPL_ENDOFNAMES */
-        "421", /* ERR_UNKNOWNCOMMAND */
-        NULL,
-};
-
 uint8_t connout[MAX_CONNBUF];
 
 static int
@@ -124,43 +94,77 @@ echo_msg(char *args)
 		return -1;
 	msg = strtok(NULL, "\0");
 	return sprintf((char *)connout, "PRIVMSG %s %s\r\n", chan, msg);
+
+static Strval irc_action[NHASH] = {
+    [1445] = {.key = "PRIVMSG", {.typ = HFUNC, .fn = &privmsg}, .next = NULL},
+    [1000] = {.key = "ROOMSTATE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [692] = {.key = "NOTICE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [827] = {.key = "CLEARMSG", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [2701] = {.key = "HOSTTARGET", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [3984] = {.key = "CLEARCHAT", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [621] = {.key = "PING", {.typ = HFUNC, .fn = &pongmsg}, .next = NULL},
+    [2781] = {.key = "MODE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [2687] = {.key = "RECONNECT", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [2463] = {.key = "USERNOTICE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [1947] = {.key = "USERSTATE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [2936] = {.key = "NAMES", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [1268] = {.key = "PART", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [3750] = {.key = "JOIN", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [898] = {.key = "CAP", {.typ = HFUNC, .fn = NULL}, .next = NULL},
+    [2576] = {.key = "001", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_WELCOME */
+    [2577] = {.key = "002", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_YOURHOST */
+    [2578] = {.key = "003", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_CREATED */
+    [2579] = {.key = "004", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_MYINFO */
+    [1578] = {.key = "372", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_MOTD */
+    [1581] = {.key = "375", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_MOTDSTART */
+    [1582] = {.key = "376", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_ENDOFMOTD */
+    [1517] = {.key = "353", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_NAMREPLY */
+    [1551] = {.key = "366", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_ENDOFNAMES */
+    [2383] = {.key = "421", {.typ = HFUNC, .fn = &errmsg}, .next = NULL}, /* ERR_UNKNOWNCOMMAND */
+};
+
+static Strval *
+actionslookup(char *key)
+{
+	int sum;
+
+	sum = hash(key);
+	if(irc_action[sum].key == NULL) {
+		return NULL;
+	}
+	if(strcmp(irc_action[sum].key, key) != 0) {
+		return NULL;
+	}
+	return &irc_action[sum];
 }
 
 static int
 parse_irc(uint8_t *buf)
 {
-	char *cmd, *args, **cmds, *tmp;
-	Strval *m[NHASH], *ret;
-	val v;
+	char *cmd, *args, *tcmd;
+	Strval *tmp;
 
-	cmds = commands;
-	strtok((char *)buf, " ");
-	cmd = strtok(NULL, " ");
+	tcmd = strtok((char *)buf, " ");
+	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
 	args = strtok(NULL, "\r\n");
 	if(!cmd || !args) {
 		return -1;
 	}
-	v.typ = HFUNC;
-	v.fn = &echo_msg;
 
-	while((tmp = *cmds++)) {
-		val vv;
-		memset(&vv, 0, sizeof vv);
-		if(strcmp(tmp, "PRIVMSG") == 0)
-			lookup(m, tmp, 1, v);
-		lookup(m, tmp, 1, vv);
-	}
-	ret = lookup(m, cmd, 0, v);
-	if(ret == NULL) {
-		fprintf(stderr, "\nNO SUCH KEY %s\n", cmd);
+	tmp = actionslookup(cmd);
+	if(tmp == NULL) {
+		fprintf(stderr, "\nNO SUCH COMMAND %s\n", cmd);
 		return -1;
 	}
-	switch(ret->v.typ) {
+	switch(tmp->v.typ) {
 	default:
-		fprintf(stderr, "unknown type %d", ret->v.typ);
+		fprintf(stderr, "unknown type %d", tmp->v.typ);
 		return -1;
 	case HFUNC:
-		return ret->v.fn(args);
+		if(tmp->v.fn == NULL) {
+			return 0;
+		}
+		return tmp->v.fn(args);
 	case HNUM:
 	case HSTR:
 	case HARR:

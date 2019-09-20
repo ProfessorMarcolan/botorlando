@@ -86,14 +86,31 @@ addemote(meta *m, emote e)
 uint8_t connout[MAX_CONNBUF];
 
 static int
-echo_msg(char *args)
+privmsg(char *args)
 {
 	char *chan, *msg;
 	chan = strtok(args, " ");
-	if(chan == NULL)
+	if(!chan)
 		return -1;
 	msg = strtok(NULL, "\0");
-	return sprintf((char *)connout, "PRIVMSG %s %s\r\n", chan, msg);
+	if(!msg)
+		return -1;
+	snprintf((char *)connout, MAX_CONNBUF, "PRIVMSG %s %s\r\n", chan, msg);
+	return 0;
+}
+
+static int
+pongmsg(char *args)
+{
+	return snprintf((char *)connout, MAX_CONNBUF, "PONG %s\r\n", args);
+}
+
+static int
+errmsg(char *args)
+{
+	fprintf(stderr, "twitch error: %s\n", args);
+	return 0;
+}
 
 static Strval irc_action[NHASH] = {
     [1445] = {.key = "PRIVMSG", {.typ = HFUNC, .fn = &privmsg}, .next = NULL},
@@ -198,10 +215,5 @@ parse_msg(uint8_t *buf, int len)
 	parse_meta((uint8_t *)meta);
 	n = parse_irc((uint8_t *)irc);
 
-	/*
-	botfelk!botfelk@botfelk.tmi.twitch.tv
-	PRIVMSG
-	#jmarcolan :qual o progresso marcola? 
-	*/
 	return n;
 }

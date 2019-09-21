@@ -10,17 +10,41 @@ typedef unsigned char uchar;
 
 enum {
 	HASH_MUL_PRIME = 31L,
-	NULLVAL_HASH = 1702,
 	NHASH = 4099,
 };
 
-static Strval Nullval = {
-    .key = "NULL",
+enum chatmode {
+	SUBMODE = 1 << 0,
+	FOLLOWMODE = 1 << 1,
+	SLOWMODE = 1 << 2,
+	EMOTEMODE = 1 << 3,
 };
 
-Strval *symtab[NHASH] = {
-    [NULLVAL_HASH] = &Nullval,
+enum usermode {
+	VIPUSER = 1 << 0,
+	SUBUSER = 1 << 1,
+	MODUSER = 1 << 2,
+	BROADCASTERUSER = 1 << 3,
+	TURBOUSER = 1 << 4,
 };
+
+static int
+hasflag(uint8_t flags, uint8_t flag)
+{
+	return (flags & flag) != 0;
+}
+
+static uint8_t
+clearflag(uint8_t flags, uint8_t flag)
+{
+	return flags & (~flag);
+}
+
+static uint8_t
+setflag(uint8_t flags, uint8_t flag)
+{
+	return flags | flag;
+}
 
 static ulong
 hash(char *str)

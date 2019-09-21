@@ -1,6 +1,8 @@
-CC = musl-clang
-LDFLAGS = -static -Wno-unused-command-line-argument
-CFLAGS = -g -O0 -Wall -Wno-unused-command-line-argument
+CC = gcc
+
+CPPFLAGS = -D_DEFAULT_SOURCE
+CFLAGS = -O3 -std=c99 -pedantic
+LDFLAGS =
 
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)
@@ -11,7 +13,7 @@ IP = irc.chat.twitch.tv:6667
 all: $(PROG)
 
 .o: $(SRC)
-	$(CC) $(CFLAGS) -o $< $>
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $< $>
 
 $(PROG): $(OBJ)
 	$(CC) $(LDFLAGS) -o $@ $^
@@ -24,6 +26,9 @@ clean:
 
 gdb: $(PROG)
 	@sh -c 'env `cat env.sh` gdb --quiet --args $(PROG) $(IP)'
+
+valgrind: $(PROG)
+	@sh -c 'env `cat env.sh` valgrind --leak-check=full ./$(PROG) $(IP)'
 
 fmt:
 	clang-format -i $(SRC) $(HDR)

@@ -40,7 +40,7 @@ struct val {
 		char *str;
 		int num;
 		int (*fn)(char *);
-	};
+	} u;
 };
 
 typedef struct Strval Strval;

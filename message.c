@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "message.h"
 
@@ -58,14 +59,16 @@ hash(char *str)
 	return sum % NHASH;
 }
 
+static Strval *metatab[NHASH];
+
 static Strval *
-lookup(Strval *m[NHASH], char *key, int create, val v)
+lookupmeta(char *key, int create, val v)
 {
 	int sum;
 	Strval *tmp;
 
 	sum = hash(key);
-	for(tmp = symtab[sum]; tmp != NULL; tmp = tmp->next) {
+	for(tmp = metatab[sum]; tmp != NULL; tmp = tmp->next) {
 		if(strcmp(key, tmp->key) == 0)
 			return tmp;
 	}
@@ -77,8 +80,8 @@ lookup(Strval *m[NHASH], char *key, int create, val v)
 		}
 		tmp->v = v;
 		tmp->key = key;
-		tmp->next = symtab[sum];
-		symtab[sum] = tmp;
+		tmp->next = metatab[sum];
+		metatab[sum] = tmp;
 	}
 	return tmp;
 }
@@ -137,31 +140,29 @@ errmsg(char *args)
 }
 
 static Strval irc_action[NHASH] = {
-    [1445] = {.key = "PRIVMSG", {.typ = HFUNC, .fn = &privmsg}, .next = NULL},
-    [1000] = {.key = "ROOMSTATE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [692] = {.key = "NOTICE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [827] = {.key = "CLEARMSG", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [2701] = {.key = "HOSTTARGET", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [3984] = {.key = "CLEARCHAT", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [621] = {.key = "PING", {.typ = HFUNC, .fn = &pongmsg}, .next = NULL},
-    [2781] = {.key = "MODE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [2687] = {.key = "RECONNECT", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [2463] = {.key = "USERNOTICE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [1947] = {.key = "USERSTATE", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [2936] = {.key = "NAMES", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [1268] = {.key = "PART", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [3750] = {.key = "JOIN", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [898] = {.key = "CAP", {.typ = HFUNC, .fn = NULL}, .next = NULL},
-    [2576] = {.key = "001", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_WELCOME */
-    [2577] = {.key = "002", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_YOURHOST */
-    [2578] = {.key = "003", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_CREATED */
-    [2579] = {.key = "004", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_MYINFO */
-    [1578] = {.key = "372", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_MOTD */
-    [1581] = {.key = "375", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_MOTDSTART */
-    [1582] = {.key = "376", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_ENDOFMOTD */
-    [1517] = {.key = "353", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_NAMREPLY */
-    [1551] = {.key = "366", {.typ = HFUNC, .fn = NULL}, .next = NULL},    /* RPL_ENDOFNAMES */
-    [2383] = {.key = "421", {.typ = HFUNC, .fn = &errmsg}, .next = NULL}, /* ERR_UNKNOWNCOMMAND */
+    [1445] = {.key = "PRIVMSG", {.typ = HFUNC, .u.fn = &privmsg}, .next = NULL},
+    [1000] = {.key = "ROOMSTATE", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [692] = {.key = "NOTICE", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [827] = {.key = "CLEARMSG", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [2701] = {.key = "HOSTTARGET", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [3984] = {.key = "CLEARCHAT", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [2687] = {.key = "RECONNECT", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [2463] = {.key = "USERNOTICE", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [1947] = {.key = "USERSTATE", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [2936] = {.key = "NAMES", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [1268] = {.key = "PART", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [3750] = {.key = "JOIN", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [898] = {.key = "CAP", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
+    [2576] = {.key = "001", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_WELCOME */
+    [2577] = {.key = "002", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_YOURHOST */
+    [2578] = {.key = "003", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_CREATED */
+    [2579] = {.key = "004", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_MYINFO */
+    [1578] = {.key = "372", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_MOTD */
+    [1581] = {.key = "375", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_MOTDSTART */
+    [1582] = {.key = "376", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_ENDOFMOTD */
+    [1517] = {.key = "353", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_NAMREPLY */
+    [1551] = {.key = "366", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_ENDOFNAMES */
+    [2383] = {.key = "421", {.typ = HFUNC, .u.fn = &errmsg}, .next = NULL}, /* ERR_UNKNOWNCOMMAND */
 };
 
 static Strval *
@@ -189,6 +190,7 @@ parse_irc(uint8_t *buf)
 	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
 	args = strtok(NULL, "\r\n");
 	if(!cmd || !args) {
+		fprintf(stderr, "cmd or args not found\n");
 		return -1;
 	}
 
@@ -202,10 +204,10 @@ parse_irc(uint8_t *buf)
 		fprintf(stderr, "unknown type %d", tmp->v.typ);
 		return -1;
 	case HFUNC:
-		if(tmp->v.fn == NULL) {
+		if(tmp->v.u.fn == NULL) {
 			return 0;
 		}
-		return tmp->v.fn(args);
+		return tmp->v.u.fn(args);
 	case HNUM:
 	case HSTR:
 	case HARR:
@@ -217,7 +219,23 @@ parse_irc(uint8_t *buf)
 int
 parse_meta(uint8_t *buf)
 {
-	return -1;
+	char *sem, *key, *value;
+	char *psem, *pkey;
+
+	for(sem = strtok_r(++buf, ";", &psem); sem != NULL; sem = strtok_r(NULL, ";", &psem)) {
+		int n;
+		val v;
+
+		key = strtok_r(sem, "=", &pkey);
+		value = strtok_r(NULL, "\0", &pkey);
+		if(!key || !value) {
+			continue;
+		}
+		v.typ = HSTR;
+		v.u.str = value;
+		lookupmeta(key, 1, v);
+	}
+	return 0;
 }
 
 int
@@ -225,19 +243,41 @@ parse_msg(uint8_t *buf, int len)
 {
 	int n;
 	char *meta, *irc;
+	val tmp;
+	Strval *ret;
+	char *p = malloc(len);
+	strncpy(p, buf, len);
 	if(*buf != '@') {
-		buf[len] = 0;
+		free(p);
 		return parse_irc(buf);
 	}
 	meta = strtok((char *)buf, " ");
-	if(meta == NULL)
+	if(meta == NULL) {
+		free(p);
+		fprintf(stderr, "twitch meta data not found\n");
 		return -1;
+	}
 	irc = strtok(NULL, "\r\n");
-	if(irc == NULL)
+	if(irc == NULL) {
+		free(p);
+		fprintf(stderr, "irc protocol not found\n");
 		return -1;
+	}
 
-	parse_meta((uint8_t *)meta);
-	n = parse_irc((uint8_t *)irc);
-
+	n = parse_meta(meta);
+	if(n < 0) {
+		free(p);
+		return n;
+	}
+	n = parse_irc(irc);
+	if((ret = lookupmeta("turbo", 0, tmp)) != NULL)
+		printf("turbo: %s ", ret->v.u.str);
+	else
+		fprintf(stderr, "\nMSG: %s\n", p);
+	if((ret = lookupmeta("tmi-sent-ts", 0, tmp)) != NULL)
+		printf("ts: %s ", ret->v.u.str);
+	if((ret = lookupmeta("display-name", 0, tmp)) != NULL)
+		printf("name: %s\n", ret->v.u.str);
+	free(p);
 	return n;
 }

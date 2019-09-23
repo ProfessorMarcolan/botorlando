@@ -62,9 +62,9 @@ hash(char *str)
 static Strval *metatab[NHASH];
 
 static Strval *
-lookupmeta(char *key, int create, val v)
+lookupmeta(char *key)
 {
-	int sum;
+	ulong sum;
 	Strval *tmp;
 
 	sum = hash(key);
@@ -72,17 +72,24 @@ lookupmeta(char *key, int create, val v)
 		if(strcmp(key, tmp->key) == 0)
 			return tmp;
 	}
+	return NULL;
+}
 
-	if(create) {
-		tmp = calloc(1, sizeof(Strval));
-		if(tmp == NULL) {
-			return NULL;
-		}
-		tmp->v = v;
-		tmp->key = key;
-		tmp->next = metatab[sum];
-		metatab[sum] = tmp;
+static Strval *
+createntry(char *key, val v)
+{
+	ulong sum;
+	Strval *tmp;
+
+	sum = hash(key);
+	tmp = calloc(1, sizeof(Strval));
+	if(tmp == NULL) {
+		return NULL;
 	}
+	tmp->v = v;
+	tmp->key = key;
+	tmp->next = metatab[sum];
+	metatab[sum] = tmp;
 	return tmp;
 }
 
@@ -233,7 +240,7 @@ parse_meta(uint8_t *buf)
 		}
 		v.typ = HSTR;
 		v.u.str = value;
-		lookupmeta(key, 1, v);
+		createntry(key, v);
 	}
 	return 0;
 }
@@ -245,39 +252,30 @@ parse_msg(uint8_t *buf, int len)
 	char *meta, *irc;
 	val tmp;
 	Strval *ret;
-	char *p = malloc(len);
-	strncpy(p, buf, len);
+
+	n = -1;
+	write(1, buf, len);
 	if(*buf != '@') {
-		free(p);
-		return parse_irc(buf);
+		n = parse_irc(buf);
+		goto esc;
 	}
 	meta = strtok((char *)buf, " ");
 	if(meta == NULL) {
-		free(p);
 		fprintf(stderr, "twitch meta data not found\n");
-		return -1;
+		goto esc;
 	}
 	irc = strtok(NULL, "\r\n");
 	if(irc == NULL) {
-		free(p);
 		fprintf(stderr, "irc protocol not found\n");
-		return -1;
+		goto esc;
 	}
 
 	n = parse_meta(meta);
 	if(n < 0) {
-		free(p);
-		return n;
+		goto esc;
 	}
 	n = parse_irc(irc);
-	if((ret = lookupmeta("turbo", 0, tmp)) != NULL)
-		printf("turbo: %s ", ret->v.u.str);
-	else
-		fprintf(stderr, "\nMSG: %s\n", p);
-	if((ret = lookupmeta("tmi-sent-ts", 0, tmp)) != NULL)
-		printf("ts: %s ", ret->v.u.str);
-	if((ret = lookupmeta("display-name", 0, tmp)) != NULL)
-		printf("name: %s\n", ret->v.u.str);
-	free(p);
+
+esc:
 	return n;
 }

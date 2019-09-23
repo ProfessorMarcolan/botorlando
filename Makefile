@@ -1,7 +1,7 @@
 CC = gcc
 
 CPPFLAGS = -D_DEFAULT_SOURCE
-CFLAGS = -O3 -std=c99 -pedantic
+CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic
 LDFLAGS =
 
 SRC = $(wildcard *.c)

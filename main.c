@@ -21,27 +21,7 @@ static const char caps[] =
     "CAP REQ :twitch.tv/membership\r\n";
 
 static const char join[] =
-    "JOIN #loltyler1\r\n"
-    "JOIN #mistermv\r\n"
-    "JOIN #lord_kebun\r\n"
-    "JOIN #esfandtv\r\n"
-    "JOIN #dogswellfish\r\n"
-    "JOIN #nl_kripp\r\n"
-    "JOIN #mrfreshasian\r\n"
-    "JOIN #maximilian_dood\r\n"
-    "JOIN #tsm_daequan\r\n"
-    "JOIN #kamet0\r\n"
-    "JOIN #scarra\r\n"
-    "JOIN #admiralbulldog\r\n"
-    "JOIN #voyboy\r\n"
-    "JOIN #rhdgurwns\r\n"
-    "JOIN #q4tc\r\n"
-    "JOIN #aydan\r\n"
-    "JOIN #kinggeorge\r\n"
-    "JOIN #rush\r\n"
-
-    "JOIN #jmarcolan\r\n"
-    "JOIN #eubyt\r\n";
+    "JOIN #ninja\r\n";
 
 static void
 sysfatal(char *fmt, ...)
@@ -84,11 +64,12 @@ main(int argc, char **argv)
 	// TODO: check auth errors
 	if(write(fd, caps, (sizeof caps) - 1) < 0)
 		sysfatal("caps: %s\n", strerror(errno));
+
 	while(1) {
 		int n;
 		static int wrote = 0;
 
-		if((n = read(fd, connbuf, sizeof connbuf)) < 0) {
+		if((n = read(fd, connout, sizeof connbuf)) < 0) {
 			fprintf(stderr, "read: %s\n", strerror(errno));
 			continue;
 		}
@@ -98,8 +79,8 @@ main(int argc, char **argv)
 			}
 			wrote = 1;
 		}
-		connbuf[n] = '\0';
-		if((n = parse_msg(connbuf, n)) < 0) {
+		connout[n] = '\0';
+		if((n = parse_msg(connout, n)) < 0) {
 			fprintf(stderr, "parse_msg: %s\n", strerror(errno));
 			continue;
 		}

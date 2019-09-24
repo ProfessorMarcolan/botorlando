@@ -6,46 +6,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <netdb.h>
-/* void listen() {
-        int fd, port, cltfd, len;
-        struct sockaddr_in addr;
-        uint8_t buf[256];
-
-        if(argc < 2)
-                sysfatal("usage: cmd port\n");
-        if((port = atoi(argv[1])) <= 0)
-                sysfatal("usage: cmd port\n");
-        
-        memset(&addr, 0, sizeof addr);
-        addr.sin_family = AF_INET; // <- 
-        addr.sin_port = htons(port); // 1 << 16
-        addr.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
-        fd = socket(AF_INET, SOCK_STREAM, 0);
-        if(fd < 0) 
-                sysfatal("socket: %s", strerror(errno));
-        if (bind(fd, (struct sockaddr *)&addr, sizeof addr) < 0)
-                sysfatal("bind: %s", strerror(errno));
-        if (listen(fd, 5) < 0)
-                sysfatal("listen: %s", strerror(errno));
-        
-        // for(;;) {...
-        len = sizeof(addr);
-        cltfd = accept(fd, (struct sockaddr *)&addr, &len);
-        if (cltfd < 0)
-                sysfatal("accept: %s", strerror(errno));
-        
-        if(read(cltfd, buf, 256) < 0) {
-                sysfatal("read: %s", strerror(errno));
-        }
-        for(int i = 0; i < 256; i++) {
-                if(!buf[i]) {
-                        break;
-
-                }
-                printf("%c ", buf[i]);
-        }
-        return 0;
-} */
 
 /* 253 domain name + 5 port (1<<16) + 1 null + 1 ':'*/
 enum {

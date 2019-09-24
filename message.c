@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <unistd.h>
+
 #include "message.h"
 
 typedef unsigned long ulong;
@@ -62,13 +64,21 @@ hash(char *str)
 static Strval *metatab[NHASH];
 
 static Strval *
-lookupmeta(char *key)
+lookupmeta(char *key, ulong *csum)
 {
 	ulong sum;
 	Strval *tmp;
+	static int reties;
 
 	sum = hash(key);
+	if(csum != NULL)
+		*csum = sum;
 	for(tmp = metatab[sum]; tmp != NULL; tmp = tmp->next) {
+		if(reties++ > 3) {
+			reties = 0;
+			return NULL;
+		}
+
 		if(strcmp(key, tmp->key) == 0)
 			return tmp;
 	}
@@ -81,11 +91,17 @@ createntry(char *key, val v)
 	ulong sum;
 	Strval *tmp;
 
-	sum = hash(key);
-	tmp = calloc(1, sizeof(Strval));
-	if(tmp == NULL) {
-		return NULL;
+	tmp = lookupmeta(key,  &sum);
+	/* FIXME: lookupmeta mightg return NULL even
+	 * with allocated memory.
+	 */
+	if(tmp == NULL){
+		tmp = calloc(1, sizeof(Strval));
+		if(tmp == NULL) {
+			return NULL;
+		}
 	}
+
 	tmp->v = v;
 	tmp->key = key;
 	tmp->next = metatab[sum];
@@ -146,8 +162,16 @@ errmsg(char *args)
 	return 0;
 }
 
+static int
+nlistmsg(char *args)
+{
+	fprintf(stdout, "NAMELIST: %s\n", args);
+	return 0;
+}
+
 static Strval irc_action[NHASH] = {
     [1445] = {.key = "PRIVMSG", {.typ = HFUNC, .u.fn = &privmsg}, .next = NULL},
+    [621] = {.key = "PING", {.typ = HFUNC, .u.fn = &pongmsg}, .next = NULL},
     [1000] = {.key = "ROOMSTATE", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
     [692] = {.key = "NOTICE", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
     [827] = {.key = "CLEARMSG", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
@@ -160,16 +184,16 @@ static Strval irc_action[NHASH] = {
     [1268] = {.key = "PART", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
     [3750] = {.key = "JOIN", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
     [898] = {.key = "CAP", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},
-    [2576] = {.key = "001", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_WELCOME */
-    [2577] = {.key = "002", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_YOURHOST */
-    [2578] = {.key = "003", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_CREATED */
-    [2579] = {.key = "004", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_MYINFO */
-    [1578] = {.key = "372", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_MOTD */
-    [1581] = {.key = "375", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_MOTDSTART */
-    [1582] = {.key = "376", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_ENDOFMOTD */
-    [1517] = {.key = "353", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_NAMREPLY */
-    [1551] = {.key = "366", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},    /* RPL_ENDOFNAMES */
-    [2383] = {.key = "421", {.typ = HFUNC, .u.fn = &errmsg}, .next = NULL}, /* ERR_UNKNOWNCOMMAND */
+    [2576] = {.key = "001", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_WELCOME */
+    [2577] = {.key = "002", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_YOURHOST */
+    [2578] = {.key = "003", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_CREATED */
+    [2579] = {.key = "004", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_MYINFO */
+    [1578] = {.key = "372", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_MOTD */
+    [1581] = {.key = "375", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_MOTDSTART */
+    [1582] = {.key = "376", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_ENDOFMOTD */
+    [1517] = {.key = "353", {.typ = HFUNC, .u.fn = &nlistmsg}, .next = NULL},    /* RPL_NAMREPLY */
+    [1551] = {.key = "366", {.typ = HFUNC, .u.fn = NULL}, .next = NULL},         /* RPL_ENDOFNAMES */
+    [2383] = {.key = "421", {.typ = HFUNC, .u.fn = &errmsg}, .next = NULL},      /* ERR_UNKNOWNCOMMAND */
 };
 
 static Strval *
@@ -188,19 +212,21 @@ actionslookup(char *key)
 }
 
 static int
-parse_irc(uint8_t *buf)
+parse_irc(char *buf)
 {
 	char *cmd, *args, *tcmd;
 	Strval *tmp;
 
 	tcmd = strtok((char *)buf, " ");
+	if(!tcmd) {
+		return -1;
+	}
 	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
 	args = strtok(NULL, "\r\n");
 	if(!cmd || !args) {
 		fprintf(stderr, "cmd or args not found\n");
 		return -1;
 	}
-
 	tmp = actionslookup(cmd);
 	if(tmp == NULL) {
 		fprintf(stderr, "\nNO SUCH COMMAND %s\n", cmd);
@@ -224,13 +250,12 @@ parse_irc(uint8_t *buf)
 }
 
 int
-parse_meta(uint8_t *buf)
+parse_meta(char *buf)
 {
 	char *sem, *key, *value;
 	char *psem, *pkey;
 
-	for(sem = strtok_r(++buf, ";", &psem); sem != NULL; sem = strtok_r(NULL, ";", &psem)) {
-		int n;
+	for(sem = strtok_r((char *)++buf, ";", &psem); sem != NULL; sem = strtok_r(NULL, ";", &psem)) {
 		val v;
 
 		key = strtok_r(sem, "=", &pkey);
@@ -250,13 +275,12 @@ parse_msg(uint8_t *buf, int len)
 {
 	int n;
 	char *meta, *irc;
-	val tmp;
-	Strval *ret;
-
 	n = -1;
-	write(1, buf, len);
 	if(*buf != '@') {
-		n = parse_irc(buf);
+		n = parse_irc((char*)buf);
+		if(n < 0) {
+			// fprintf(stderr, "irc: bad formatted message: %s", debug);
+		}
 		goto esc;
 	}
 	meta = strtok((char *)buf, " ");
@@ -275,7 +299,9 @@ parse_msg(uint8_t *buf, int len)
 		goto esc;
 	}
 	n = parse_irc(irc);
-
+	if(n < 0) {
+	//	fprintf(stderr, "irc: bad formatted message: %s", debug);
+	}
 esc:
 	return n;
 }

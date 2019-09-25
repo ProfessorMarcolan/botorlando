@@ -1,8 +1,11 @@
 CC = gcc
 
 CPPFLAGS = -D_DEFAULT_SOURCE
+# -flto -O3
 CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic -Wall -Werror -Wno-unused-function
 LDFLAGS =
+
+# -Wextra 
 
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)
@@ -19,16 +22,16 @@ $(PROG): $(OBJ)
 	$(CC) $(LDFLAGS) -o $@ $^
 
 run: $(PROG)
-	@sh -c 'env `cat env.sh` ./$(PROG) $(IP)'
+	@sh -c 'env `cat env.sh` ./$(PROG) $(IP) `cat joins`'
 
 clean:
 	rm -f $(OBJ) $(PROG)
 
 gdb: $(PROG)
-	@sh -c 'env `cat env.sh` gdb --quiet --args $(PROG) $(IP)'
+	@sh -c 'env `cat env.sh` gdb --quiet --args $(PROG) $(IP) `cat joins`'
 
 valgrind: $(PROG)
-	@sh -c 'env `cat env.sh` valgrind --leak-check=full ./$(PROG) $(IP)'
+	@sh -c 'env `cat env.sh` valgrind --leak-check=full ./$(PROG) $(IP) `cat joins`'
 
 fmt:
 	clang-format -i $(SRC) $(HDR)

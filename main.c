@@ -35,12 +35,12 @@ main(int argc, char **argv)
 	Irc irc;
 	Response r;
 
-	if(argc < 3)
-		sysfatal("usage: host:port channels...\n");
+	if(argc < 2)
+		sysfatal("usage: host:port [channels...]\n");
 	for(i = 2; i < argc; i++)
 		if(ircaddchan(&irc, argv[i]) < 0)
 			sysfatal("ircaddchan: %s\n", strerror(errno));
-	r = initirc(&irc, NULL, 0);
+	r = ircreset(&irc, NULL, 0);
 	if((fd = dial(argv[1])) < 0)
 		sysfatal("dial: %s\n", strerror(errno));
 
@@ -55,11 +55,11 @@ main(int argc, char **argv)
 			continue;
 		}
 		if(n == 0) {
-			fprintf(stderr, "EOF\n");
+			fprintf(stderr, "EOF: %d\n", n);
 			close(fd);
 			break;
 		}
-		initirc(&irc, connbuf, n);
+		ircreset(&irc, connbuf, n);
 		r = newresponse(&irc);
 	}
 }

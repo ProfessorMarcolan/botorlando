@@ -33,16 +33,22 @@ struct meta {
 	emotesarr emotes;
 };
 
-typedef struct Irc Irc;
-struct Irc {
-	meta m;
+typedef struct BotState BotState;
+struct BotState {
 	channel chans;
+	Irc msg;
 
-	void *inp;
+	void *raw;
 	size_t len;
 };
 
-Response initirc(Irc *, void *, size_t);
+typedef struct Irc Irc;
+struct Irc {
+	meta m;
+	char *data;
+};
+
+Response ircreset(Irc *, void *, size_t);
 int ircaddchan(Irc *, char *);
 Response newresponse(Irc *);
 

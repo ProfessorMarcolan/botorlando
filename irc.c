@@ -168,12 +168,23 @@ static uint8_t writebuf[WRITEBUFLEN];
 static Response respwriter = {.len = 0, .data = writebuf};
 
 static int
-appendresp(const void *p, size_t n)
+appendresp(const char *fmt, ...)
 {
-	if(n + respwriter.len > WRITEBUFLEN) {
+	va_list argp;
+	long int n;
+	char *p;
+
+	n = WRITEBUFLEN - respwriter.len;
+	if(n < 0) {
 		return -1;
 	}
-	memcpy((char *)respwriter.data + respwriter.len, p, n);
+	p = respwriter.data + respwriter.len;
+	va_start(argp, fmt);
+	n = vsnprintf(p, n, fmt, argp);
+	va_end(argp);
+	if(n < 0) {
+		return n;
+	}
 	respwriter.len += n;
 	return n;
 }
@@ -190,20 +201,13 @@ privmsg(char *args)
 	msg = strtok(NULL, "\0");
 	if(!msg)
 		return -1;
-	n = appendresp(chan, strlen(chan));
-	n += appendresp(msg, strlen(msg));
 	return n;
 }
 
 static int
 pongmsg(char *args)
 {
-	int n;
-
-	n = appendresp("PONG ", 5);
-	n += appendresp(args, strlen(args));
-	n += appendresp("\r\n", 2);
-	return n;
+	return appendresp("PONG %s\r\n", args);
 }
 
 static int
@@ -268,14 +272,17 @@ tokenizeirc(Irc *irc)
 	char *cmd, *args, *tcmd;
 	Strval *tmp;
 
-	tcmd = strtok((char *)irc->inp, " ");
-	if(!tcmd) {
+	tcmd = strtok(irc->ircdata, " ");
+	if(tcmd == NULL) {
+		fprintf(stderr, "tcmd NULL\n");
 		return -1;
 	}
 	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
 	args = strtok(NULL, "\r\n");
 	if(!cmd || !args) {
 		fprintf(stderr, "cmd or args not found\n");
+		write(2, irc->inbuf, irc->len);
+		write(2, "\n\n", 2);
 		return -1;
 	}
 	tmp = actionslookup(cmd);
@@ -324,46 +331,51 @@ tokensizemeta(char *buf)
 static void
 freeirc(Irc *i)
 {
-	if(i->chans.nchan > 0) {
-		free(i->chans.v);
-		i->chans.nchan = 0;
-	}
+
 }
 
 static int
-ircjoin(Irc *irc)
+botjoin(BotState *b)
 {
 	int i;
 
-	for(i = 0; i < irc->chans.nchan; i++) {
-		size_t n;
+	for(i = 0; i < b->chans.nchan; i++)
+		if(appendresp("JOIN %s\r\n", b->chans.v[i]) < 0)
+			return -1;
+	b->chans.nchan = 0;
+	return 1;
+}
 
-		n = strlen(irc->chans.v[i]);
-		if(appendresp("JOIN ", 5) < 0) {
-			return -1;
-		}
-		if(appendresp(irc->chans.v[i], n) < 0) {
-			return -1;
-		}
-		if(appendresp("\r\n", 2) < 0) {
+static int
+saveinp(Irc *irc)
+{
+	if(irc->inbuf == NULL){
+		irc->inbuf = malloc(irc->len);
+		if(irc->inbuf == NULL) {
 			return -1;
 		}
 	}
+	memcpy(irc->inbuf, irc->inp, irc->len);
+	irc->buflen = irc->len;
 	return 1;
 }
 
 Response
-newresponse(Irc *i)
+newresponse(BotState *b)
 {
 	int n;
 	char *meta, *irc;
 
 	respwriter.len = 0;
+	free(i->inbuf);
+	i->inbuf = malloc(i->len);
+	memcpy(i->inbuf, i->inp, i->len);
 	n = -1;
 	if(i->chans.nchan > 0) {
 		ircjoin(i);
 	}
 	if(*(char *)i->inp != '@') {
+		i->ircdata = i->inp;
 		n = tokenizeirc(i);
 		if(n < 0) {
 			// fprintf(stderr, "irc: bad formatted message: %s", debug);
@@ -385,6 +397,7 @@ newresponse(Irc *i)
 	if(n < 0) {
 		goto esc;
 	}
+	i->ircdata = irc;
 	n = tokenizeirc(i);
 	if(n < 0) {
 		//	fprintf(stderr, "irc: bad formatted message: %s", debug);
@@ -395,56 +408,44 @@ esc:
 }
 
 static int
-irccap(Irc *irc)
+respcap(char *caps)
 {
-	static const char caps[] =
-	    "CAP REQ :twitch.tv/tags\r\n"
-	    "CAP REQ :twitch.tv/commands\r\n"
-	    "CAP REQ :twitch.tv/membership\r\n";
-	appendresp(caps, (sizeof caps) - 1);
-
+	appendresp(caps);
 	return 1;
 }
 
 static int
-ircauth(Irc *irc)
+respauth(char *user, char *passwd)
 {
-	size_t authlen;
-	char *user, *passwd, *auth;
-
-	user = getenv("TWITCH_USER");
-	passwd = getenv("TWITCH_OAUTH");
-	if(!user) {
-		fprintf(stderr, "bot: TWITCH_USER not found\n");
-		exit(EXIT_FAILURE);
-	}
-	if(!passwd) {
-		fprintf(stderr, "bot: TWITCH_OAUTH not found\n");
-		exit(EXIT_FAILURE);
-	}
-	/* sizeof "PASS " -1 + sizeof "NICK " -1 + sizeof \r\n * 2 */
-	authlen = 14 + strlen(user) + strlen(passwd);
-	auth = malloc(authlen + 1);
-	sprintf(auth, "PASS %s\r\nNICK %s\r\n", passwd, user);
-	appendresp(auth, authlen);
-	free(auth);
-	return 1;
+	return appendresp("PASS %s\r\nNICK %s\r\n", passwd, user);
 }
 
 Response
-initirc(Irc *i, void *data, size_t len)
+botreset(BotState *b, void *data, size_t len)
 {
+	/* first time, append server connection */
 	static int joint;
+	static const char caps = "CAP REQ :twitch.tv/tags\r\nCAP REQ :twitch.tv/commands\r\nCAP REQ :twitch.tv/membership\r\n";
 	if(!joint) {
-		ircauth(i);
-		irccap(i);
+		user = getenv("TWITCH_USER");
+		passwd = getenv("TWITCH_OAUTH");
+		if(!user) {
+			fprintf(stderr, "bot: TWITCH_USER not found\n");
+			exit(EXIT_FAILURE);
+		}
+		if(!passwd) {
+			fprintf(stderr, "bot: TWITCH_OAUTH not found\n");
+			exit(EXIT_FAILURE);
+		}
+		respauth(user, passwd);
+		respcap(caps);
 		if(i->chans.nchan > 0) {
-			ircjoin(i);
+			respjoin();
 		}
 		joint = 1;
 	}
-	i->inp = data;
 	i->len = len;
+	i->inp = data;
 	return respwriter;
 }
 
@@ -462,7 +463,7 @@ ircaddchan(Irc *i, char *chan)
 		i->chans.nchan = 0;
 	} else if(i->chans.nchan >= i->chans.max) {
 		tmp = realloc(i->chans.v,
-		              (2 * i->chans.max) * sizeof(channel));
+		    (2 * i->chans.max) * sizeof(channel));
 		if(tmp == NULL) {
 			return -1;
 		}

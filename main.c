@@ -13,7 +13,9 @@
 #include <stdarg.h>
 
 #include "conn.h"
+#include "resp.h"
 #include "irc.h"
+#include "bot.h"
 
 static void
 sysfatal(char *fmt, ...)
@@ -24,42 +26,45 @@ sysfatal(char *fmt, ...)
 	va_end(argp);
 	exit(EXIT_FAILURE);
 }
-enum { MAX_CONNBUF = 8192 };
-
-static uint8_t connbuf[MAX_CONNBUF];
 
 int
 main(int argc, char **argv)
 {
 	int i, fd;
-	Irc irc;
-	Response r;
+	char *user, *passwd;
+	BotState bot;
 
+	user = getenv("TWITCH_USER");
+	passwd = getenv("TWITCH_OAUTH");
+	if(!user) {
+		sysfatal("bot: TWITCH_USER not found\n");
+	}
+	if(!passwd) {
+		sysfatal("bot: TWITCH_OAUTH not found\n");
+	}
 	if(argc < 2)
 		sysfatal("usage: host:port [channels...]\n");
+	if(botsigin(&bot, user, passwd) < 0)
+		sysfatal("bot: authentication overflows output buffer\n");
 	for(i = 2; i < argc; i++)
-		if(ircaddchan(&irc, argv[i]) < 0)
+		if(botjoinchan(&bot, argv[i]) < 0)
 			sysfatal("ircaddchan: %s\n", strerror(errno));
-	r = ircreset(&irc, NULL, 0);
 	if((fd = dial(argv[1])) < 0)
 		sysfatal("dial: %s\n", strerror(errno));
 
 	for(;;) {
-		int n;
-
-		if(r.len > 0) {
-			write(fd, r.data, r.len);
+		if(bot.r.len > 0) {
+			write(fd, bot.r.data, bot.r.len);
 		}
-		if((n = read(fd, connbuf, sizeof connbuf)) < 0) {
+		if((bot.inlen = read(fd, bot.input, MAX_INCOMEBUF)) < 0) {
 			fprintf(stderr, "read: %s\n", strerror(errno));
 			continue;
 		}
-		if(n == 0) {
-			fprintf(stderr, "EOF: %d\n", n);
+		if(bot.inlen < 3) {
+			/* TODO: retries? */
+			fprintf(stderr, "EOF: %d\n", bot.inlen);
 			close(fd);
 			break;
 		}
-		ircreset(&irc, connbuf, n);
-		r = newresponse(&irc);
 	}
 }

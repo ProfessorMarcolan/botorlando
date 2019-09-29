@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "irc.h"
+#include "resp.h"
 
 enum HASHVAL {
 	HNUM,
@@ -103,7 +104,7 @@ lookupmeta(char *key, ulong *csum)
 	if(csum != NULL)
 		*csum = sum;
 	for(tmp = metatab[sum]; tmp != NULL; tmp = tmp->next) {
-		// FIX
+		/* FIXME: tmp is never null if there's a collision */
 		if(reties++ > 3) {
 			reties = 0;
 			return NULL;
@@ -163,36 +164,9 @@ addemote(meta *m, emote e)
 	return m->emotes.nval++;
 }
 
-enum { WRITEBUFLEN = 8192 };
-static uint8_t writebuf[WRITEBUFLEN];
-static Response respwriter = {.len = 0, .data = writebuf};
-
-static int
-appendresp(const char *fmt, ...)
-{
-	va_list argp;
-	long int n;
-	char *p;
-
-	n = WRITEBUFLEN - respwriter.len;
-	if(n < 0) {
-		return -1;
-	}
-	p = respwriter.data + respwriter.len;
-	va_start(argp, fmt);
-	n = vsnprintf(p, n, fmt, argp);
-	va_end(argp);
-	if(n < 0) {
-		return n;
-	}
-	respwriter.len += n;
-	return n;
-}
-
 static int
 privmsg(char *args)
 {
-	int n;
 	char *chan, *msg;
 
 	chan = strtok(args, " ");
@@ -201,7 +175,7 @@ privmsg(char *args)
 	msg = strtok(NULL, "\0");
 	if(!msg)
 		return -1;
-	return n;
+	return 0;
 }
 
 static int
@@ -266,23 +240,22 @@ actionslookup(char *key)
 	return &irc_action[sum];
 }
 
-static int
-tokenizeirc(Irc *irc)
+int
+parseirc(char *p)
 {
 	char *cmd, *args, *tcmd;
 	Strval *tmp;
 
-	tcmd = strtok(irc->ircdata, " ");
+	tcmd = strtok(p, " ");
 	if(tcmd == NULL) {
 		fprintf(stderr, "tcmd NULL\n");
 		return -1;
 	}
 	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
-	args = strtok(NULL, "\r\n");
+
+	args = strtok(NULL, "\0");
 	if(!cmd || !args) {
 		fprintf(stderr, "cmd or args not found\n");
-		write(2, irc->inbuf, irc->len);
-		write(2, "\n\n", 2);
 		return -1;
 	}
 	tmp = actionslookup(cmd);
@@ -307,8 +280,8 @@ tokenizeirc(Irc *irc)
 	return 0;
 }
 
-static int
-tokensizemeta(char *buf)
+int
+parsemeta(char *buf)
 {
 	char *sem, *key, *value;
 	char *psem, *pkey;
@@ -326,150 +299,4 @@ tokensizemeta(char *buf)
 		createntry(key, v);
 	}
 	return 0;
-}
-
-static void
-freeirc(Irc *i)
-{
-
-}
-
-static int
-botjoin(BotState *b)
-{
-	int i;
-
-	for(i = 0; i < b->chans.nchan; i++)
-		if(appendresp("JOIN %s\r\n", b->chans.v[i]) < 0)
-			return -1;
-	b->chans.nchan = 0;
-	return 1;
-}
-
-static int
-saveinp(Irc *irc)
-{
-	if(irc->inbuf == NULL){
-		irc->inbuf = malloc(irc->len);
-		if(irc->inbuf == NULL) {
-			return -1;
-		}
-	}
-	memcpy(irc->inbuf, irc->inp, irc->len);
-	irc->buflen = irc->len;
-	return 1;
-}
-
-Response
-newresponse(BotState *b)
-{
-	int n;
-	char *meta, *irc;
-
-	respwriter.len = 0;
-	free(i->inbuf);
-	i->inbuf = malloc(i->len);
-	memcpy(i->inbuf, i->inp, i->len);
-	n = -1;
-	if(i->chans.nchan > 0) {
-		ircjoin(i);
-	}
-	if(*(char *)i->inp != '@') {
-		i->ircdata = i->inp;
-		n = tokenizeirc(i);
-		if(n < 0) {
-			// fprintf(stderr, "irc: bad formatted message: %s", debug);
-		}
-		goto esc;
-	}
-	meta = strtok((char *)i->inp, " ");
-	if(meta == NULL) {
-		fprintf(stderr, "twitch meta data not found\n");
-		goto esc;
-	}
-	irc = strtok(NULL, "\r\n");
-	if(irc == NULL) {
-		fprintf(stderr, "irc protocol not found\n");
-		goto esc;
-	}
-
-	n = tokensizemeta(meta);
-	if(n < 0) {
-		goto esc;
-	}
-	i->ircdata = irc;
-	n = tokenizeirc(i);
-	if(n < 0) {
-		//	fprintf(stderr, "irc: bad formatted message: %s", debug);
-	}
-esc:
-	freeirc(i);
-	return respwriter;
-}
-
-static int
-respcap(char *caps)
-{
-	appendresp(caps);
-	return 1;
-}
-
-static int
-respauth(char *user, char *passwd)
-{
-	return appendresp("PASS %s\r\nNICK %s\r\n", passwd, user);
-}
-
-Response
-botreset(BotState *b, void *data, size_t len)
-{
-	/* first time, append server connection */
-	static int joint;
-	static const char caps = "CAP REQ :twitch.tv/tags\r\nCAP REQ :twitch.tv/commands\r\nCAP REQ :twitch.tv/membership\r\n";
-	if(!joint) {
-		user = getenv("TWITCH_USER");
-		passwd = getenv("TWITCH_OAUTH");
-		if(!user) {
-			fprintf(stderr, "bot: TWITCH_USER not found\n");
-			exit(EXIT_FAILURE);
-		}
-		if(!passwd) {
-			fprintf(stderr, "bot: TWITCH_OAUTH not found\n");
-			exit(EXIT_FAILURE);
-		}
-		respauth(user, passwd);
-		respcap(caps);
-		if(i->chans.nchan > 0) {
-			respjoin();
-		}
-		joint = 1;
-	}
-	i->len = len;
-	i->inp = data;
-	return respwriter;
-}
-
-int
-ircaddchan(Irc *i, char *chan)
-{
-	char **tmp;
-
-	if(i->chans.v == NULL) {
-		i->chans.v = malloc(sizeof(channel));
-		if(i->chans.v == NULL) {
-			return -1;
-		}
-		i->chans.max = 1;
-		i->chans.nchan = 0;
-	} else if(i->chans.nchan >= i->chans.max) {
-		tmp = realloc(i->chans.v,
-		    (2 * i->chans.max) * sizeof(channel));
-		if(tmp == NULL) {
-			return -1;
-		}
-		i->chans.max *= 2;
-		i->chans.v = tmp;
-	}
-	i->chans.v[i->chans.nchan] = chan;
-	return i->chans.nchan++;
 }

@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "resp.h"
 #include "irc.h"
@@ -73,7 +74,12 @@ botthink(BotState *b)
 	void *tmp;
 	char *irc, *meta;
 	char *buf;
+	size_t buflen;
 
+	if (b->inlen < 3) {
+		/* EOF, print? */
+		return -2;
+	}
 	if (b->input[b->inlen - 1] != '\n' && b->input[b->inlen - 2] != '\r') {
 		tmp = realloc(b->overrun, b->olen + b->inlen);
 		if (tmp == NULL)
@@ -86,6 +92,7 @@ botthink(BotState *b)
 		return 1;
 	}
 	buf = (char *)incbuf;
+	buflen = b->inlen;
 	if (b->overrun != NULL) {
 		tmp = realloc(b->overrun, b->olen + b->inlen);
 		if (tmp == NULL)
@@ -96,11 +103,19 @@ botthink(BotState *b)
 		memcpy(b->overrun + b->olen, b->input, b->inlen);
 		b->olen += b->inlen;
 		buf = b->overrun;
+		buflen = b->olen;
 	}
 
 	meta = NULL;
 	char *msg;
 	char *msgprev, *prev;
+
+	/* TODO: test this, it's possible it's over writing
+	 * meaningful data with '\0'. Propably we should
+	 * read up to INPUTMAXSIZE - 1 in read(), so
+	 * there is always one last byte available to zero
+	 */
+	buf[buflen] = '\0';
 	/* TODO: make sure buf is null terminated */
 	for (msg = strtok_r(buf, "\r\n", &msgprev); msg != NULL;
 	     msg = strtok_r(NULL, "\r\n", &msgprev)) {
@@ -126,7 +141,6 @@ botthink(BotState *b)
 				goto err;
 		}
 	}
-
 err:
 	if (b->overrun != NULL) {
 		free(b->overrun);

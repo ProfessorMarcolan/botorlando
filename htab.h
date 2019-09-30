@@ -1,9 +1,7 @@
 #ifndef HTAB_H
 #define HTAB_H
 
-enum {
-	HTABINIT = 32
-};
+enum { HTABINIT = 32 };
 
 typedef struct Htab Htab;
 
@@ -14,6 +12,5 @@ void *Hget(Htab *, void *);
 int Hhas(Htab *, void *);
 void Hfree(Htab *t);
 Htab *Hnew(void);
-       
 
 #endif

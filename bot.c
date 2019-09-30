@@ -126,8 +126,8 @@ botthink(BotState *b)
 		}
 	}
 
+err:
 	if (b->overrun != NULL) {
-	err:
 		free(b->overrun);
 		b->overrun = NULL;
 		b->olen = 0;

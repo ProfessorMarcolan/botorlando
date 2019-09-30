@@ -8,27 +8,24 @@
 #include <netdb.h>
 
 /* 253 domain name + 5 port (1<<16) + 1 null + 1 ':'*/
-enum {
-	max_port = 5,
-	max_domain_buffer = 253 + max_port + 1 + 1,
-};
+enum { MAXPORTSIZE = 5, MAXDOMAINBUFSIZE = 253 + MAXPORTSIZE + 1 + 1 };
 static int
 parseaddr(char *address, char *host, char *port)
 {
 	int len;
 	char *tmp;
 
-	if((len = strlen(address)) > max_domain_buffer) {
+	if ((len = strlen(address)) > MAXDOMAINBUFSIZE) {
 		return -1;
 	}
 	address[len] = 0;
-	// make a copy, so we don't mess with caller data
+	/*  make a copy, so we don't mess with caller data */
 	tmp = strtok(address, ":");
-	if(tmp == NULL)
+	if (tmp == NULL)
 		return -1;
 	strcpy(host, tmp);
 	tmp = strtok(NULL, ":");
-	if(tmp == NULL)
+	if (tmp == NULL)
 		return -1;
 	strcpy(port, tmp);
 	return 1;
@@ -43,24 +40,24 @@ dial(char *address)
 	struct hostent *url;
 
 	port = NULL;
-	host = malloc(max_domain_buffer);
-	if(!host) {
+	host = malloc(MAXDOMAINBUFSIZE);
+	if (host == NULL) {
 		fd = -1;
 		goto ret;
 	}
 	port = malloc(6);
-	if(!port) {
+	if (port == NULL) {
 		fd = -1;
 		goto ret;
 	}
-	if(parseaddr(address, host, port) < 0) {
+	if (parseaddr(address, host, port) < 0) {
 		fd = -1;
 		goto ret;
 	}
 
 	porti = atoi(port);
 	url = gethostbyname(host);
-	if(!url) {
+	if (!url) {
 		fd = -1;
 		goto ret;
 	}
@@ -70,10 +67,10 @@ dial(char *address)
 	addr.sin_port = htons(porti);
 	addr.sin_addr = *((struct in_addr *)url->h_addr);
 	fd = socket(AF_INET, SOCK_STREAM, 0);
-	if(fd < 0)
+	if (fd < 0)
 		goto ret;
 
-	if(connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		fd = -1;
 		goto ret;
 	}

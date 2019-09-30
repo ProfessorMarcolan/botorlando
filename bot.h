@@ -16,7 +16,7 @@ struct BotState {
 	channel chans;
 	Irc msg;
 
-	Response r;
+	Response *r;
 	char *input;
 	ssize_t inlen;
 
@@ -26,6 +26,7 @@ struct BotState {
 
 int botjoinchan(BotState *, char *);
 int botsigin(BotState *, char *, char *);
-int botrethink(BotState *);
+int botthink(BotState *);
+void botinit(BotState *);
 
 #endif

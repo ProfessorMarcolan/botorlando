@@ -36,35 +36,44 @@ main(int argc, char **argv)
 
 	user = getenv("TWITCH_USER");
 	passwd = getenv("TWITCH_OAUTH");
-	if(!user) {
+	if (!user) {
 		sysfatal("bot: TWITCH_USER not found\n");
 	}
-	if(!passwd) {
+	if (!passwd) {
 		sysfatal("bot: TWITCH_OAUTH not found\n");
 	}
-	if(argc < 2)
+	botinit(&bot);
+	if (argc < 2)
 		sysfatal("usage: host:port [channels...]\n");
-	if(botsigin(&bot, user, passwd) < 0)
-		sysfatal("bot: authentication overflows output buffer\n");
-	for(i = 2; i < argc; i++)
-		if(botjoinchan(&bot, argv[i]) < 0)
+	for (i = 2; i < argc; i++)
+		if (botjoinchan(&bot, argv[i]) < 0)
 			sysfatal("ircaddchan: %s\n", strerror(errno));
-	if((fd = dial(argv[1])) < 0)
+	if (botsigin(&bot, user, passwd) < 0)
+		sysfatal("bot: authentication overflows output buffer\n");
+	if ((fd = dial(argv[1])) < 0)
 		sysfatal("dial: %s\n", strerror(errno));
 
-	for(;;) {
-		if(bot.r.len > 0) {
-			write(fd, bot.r.data, bot.r.len);
+	for (;;) {
+		ssize_t n;
+		if ((n = writeresp(fd)) <= 0) {
+			if (n == 0) {
+				/* TODO: retries? */
+				fprintf(stderr, "EOF: %d\n", n);
+				close(fd);
+				break;
+			}
+			fprintf(stderr, "write: %s\n", strerror(errno));
+			close(fd);
+			break;
 		}
-		if((bot.inlen = read(fd, bot.input, MAX_INCOMEBUF)) < 0) {
+
+		if ((bot.inlen = read(fd, bot.input, MAX_INCOMEBUF)) < 0) {
 			fprintf(stderr, "read: %s\n", strerror(errno));
 			continue;
 		}
-		if(bot.inlen < 3) {
-			/* TODO: retries? */
-			fprintf(stderr, "EOF: %d\n", bot.inlen);
-			close(fd);
-			break;
+		if (botthink(&bot) < 0) {
+			fprintf(stderr, "wot?\n");
+			continue;
 		}
 	}
 }

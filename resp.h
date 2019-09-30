@@ -9,6 +9,7 @@ struct Response {
 
 enum { OUTBUFLEN = 8192 };
 int appendresp(const char *, ...);
-Response getdefresp(void);
+ssize_t writeresp(int);
+Response *getdefresp(void);
 
 #endif

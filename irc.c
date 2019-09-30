@@ -9,6 +9,8 @@
 #include "irc.h"
 #include "resp.h"
 
+#define USED(x) if(x){}else{}
+
 enum HASHVAL {
 	HNUM,
 	HSTR,
@@ -189,6 +191,7 @@ errmsg(char *args)
 static int
 nlistmsg(char *args)
 {
+	USED(args);
 	/* fprintf(stdout, "NAMELIST: %s\n", args); */
 	return 0;
 }
@@ -342,3 +345,5 @@ parsemeta(char *buf)
 	}
 	return 0;
 }
+
+#undef USED

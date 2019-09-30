@@ -1,11 +1,8 @@
 CC = gcc
 
 CPPFLAGS = -D_DEFAULT_SOURCE
-# -flto -O3
-CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic -Wall -Werror -Wno-unused-function
-LDFLAGS =
-
-# -Wextra 
+CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic -Wall -Werror -Wextra -Wno-unused-function#-flto -O3
+LDFLAGS = #-flto -O3
 
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)

@@ -11,7 +11,8 @@ static uint8_t incbuf[MAX_INCOMEBUF];
 static int
 botwritejoins(BotState *b)
 {
-	int i, n;
+	int n;
+	size_t i;
 
 	for (n = 0, i = 0; i < b->chans.nchan; i++)
 		n = appendresp("JOIN %s\r\n", b->chans.v[i]);

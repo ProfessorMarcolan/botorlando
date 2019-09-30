@@ -43,7 +43,8 @@ getdefresp()
 ssize_t
 writeresp(int fd)
 {
-	ssize_t n, total;
+	ssize_t n;
+	size_t total;
 
 	if (respwriter.len == 0)
 		return 1;

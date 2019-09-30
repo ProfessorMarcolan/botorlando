@@ -203,6 +203,9 @@ static const Strval irc_action[NHASH] = {
 	[621] = { .key = "PING",
 		  { .typ = HFUNC, .u.fn = &pongmsg },
 		  .next = NULL },
+	[1606] = { .key = "GLOBALUSERSTATE",
+		   { .typ = HFUNC, .u.fn = NULL },
+		   .next = NULL },
 	[1000] = { .key = "ROOMSTATE",
 		   { .typ = HFUNC, .u.fn = NULL },
 		   .next = NULL },
@@ -268,7 +271,7 @@ static const Strval irc_action[NHASH] = {
 static const Strval *
 actionslookup(char *key)
 {
-	int sum;
+	ulong sum;
 
 	sum = hash(key);
 	if (irc_action[sum].key == NULL) {
@@ -292,16 +295,11 @@ parseirc(char *p)
 		return -1;
 	}
 	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
-
-	args = strtok(NULL, "\0");
 	if (cmd == NULL) {
-		fprintf(stderr, "cmd not found\n");
+		fprintf(stderr, "cmd (%s) not found\n", p);
 		return -1;
 	}
-	if (args == NULL) {
-		fprintf(stderr, "args for cmd %s not found\n", cmd);
-		return -1;
-	}
+	args = strtok(NULL, "\0");
 	tmp = actionslookup(cmd);
 	if (tmp == NULL) {
 		fprintf(stderr, "\nNO SUCH COMMAND %s\n", cmd);

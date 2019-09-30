@@ -9,7 +9,10 @@
 #include "irc.h"
 #include "resp.h"
 
-#define USED(x) if(x){}else{}
+#define USED(x)  \
+	if (x) { \
+	} else { \
+	}
 
 enum HASHVAL {
 	HNUM,

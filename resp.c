@@ -52,8 +52,6 @@ writeresp(int fd)
 		n = write(fd, respwriter.data, respwriter.len);
 		if (n < 0)
 			return n;
-		if (n < 3)
-			return 0;
 		total += n;
 	}
 	respwriter.len = 0;

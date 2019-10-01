@@ -77,7 +77,7 @@ lookup:
 }
 
 void *
-hget(Htab *t, void *key)
+Hget(Htab *t, void *key)
 {
 	int i;
 

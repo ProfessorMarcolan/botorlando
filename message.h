@@ -25,11 +25,7 @@ struct Message {
 	char *data;
 };
 
-enum MessageError {
-	MNOERR,
-	MMERR,
-	MIRC
-};
+enum MessageError { MNOERR, MMNOTFOUND, MIRCNOTFOUND, MMERR, MIRCERR };
 
 int parseirc(char *);
 int parsemeta(char *);

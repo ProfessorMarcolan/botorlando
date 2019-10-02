@@ -27,6 +27,10 @@ sysfatal(char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
+/* TODO: there's a rare double free bug going on.
+ * probably related with realloc freeing the memory
+ * and then we are freeing it again on bot.c
+ */
 int
 main(int argc, char **argv)
 {
@@ -52,9 +56,9 @@ main(int argc, char **argv)
 		sysfatal("bot: authentication overflows output buffer\n");
 	if ((fd = dial(argv[1])) < 0)
 		sysfatal("dial: %s\n", strerror(errno));
-
 	for (;;) {
 		ssize_t n;
+		int nn; /* FIXME */
 		if ((n = writeresp(fd)) <= 0) {
 			if (n == 0) {
 				/* TODO: retries? */
@@ -66,14 +70,16 @@ main(int argc, char **argv)
 			close(fd);
 			break;
 		}
-
 		if ((bot.inlen = read(fd, bot.input, MAX_INCOMEBUF)) < 0) {
 			fprintf(stderr, "read: %s\n", strerror(errno));
 			continue;
 		}
-		if (botthink(&bot) < 0) {
-			fprintf(stderr, "wot?\n");
-			continue;
+
+		if ((nn = botthink(&bot)) < 0) {
+			if (nn != -2)
+				fprintf(stderr, "wot?\n");
+			/* TODO: shouldnt exit on irc errors, figure out when we should fatal */
+			exit(0);
 		}
 	}
 }

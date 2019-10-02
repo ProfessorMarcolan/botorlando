@@ -11,6 +11,8 @@ struct channel {
 	char **v;
 };
 
+enum BotError { BNOERR, BFATAL, BEOF, BHUNGRY };
+
 typedef struct BotState BotState;
 struct BotState {
 	channel chans;

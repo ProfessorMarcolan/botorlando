@@ -68,47 +68,100 @@ botsigin(BotState *b, char *usr, char *passwd)
 	return botwritejoins(b);
 }
 
-int
-botthink(BotState *b)
+static enum BotError
+validatemsg(BotState *b)
 {
 	void *tmp;
-	char *irc, *meta;
-	char *buf;
-	size_t buflen;
 
 	if (b->inlen < 3) {
 		/* EOF, print? */
-		return -2;
+		return BEOF;
 	}
 	if (b->input[b->inlen - 1] != '\n' && b->input[b->inlen - 2] != '\r') {
 		tmp = realloc(b->overrun, b->olen + b->inlen);
 		if (tmp == NULL)
 			/* TODO: cleanup and ignore this message */
-			return -1;
+			return BFATAL;
 
 		b->overrun = tmp;
 		memcpy(b->overrun + b->olen, incbuf, b->inlen);
 		b->olen += b->inlen;
-		return 1;
+		return BHUNGRY;
 	}
-	buf = (char *)incbuf;
-	buflen = b->inlen;
+	/* we got a complete message, append leftover data */
 	if (b->overrun != NULL) {
 		tmp = realloc(b->overrun, b->olen + b->inlen);
 		if (tmp == NULL)
 			/* TODO: cleanup and ignore this message */
-			return -1;
+			return BFATAL;
 
 		b->overrun = tmp;
 		memcpy(b->overrun + b->olen, b->input, b->inlen);
 		b->olen += b->inlen;
+	}
+	return BNOERR;
+}
+
+static enum MessageError
+breakmsg(char *buf)
+{
+	char *irc, *meta;
+	char *msg;
+	char *msgprev, *prev;
+
+	for (msg = strtok_r(buf, "\r\n", &msgprev); msg != NULL;
+	     msg = strtok_r(NULL, "\r\n", &msgprev)) {
+		if (*msg == '@') {
+			meta = strtok_r(msg, " ", &prev);
+			if (meta == NULL)
+				return MMNOTFOUND;
+			irc = strtok_r(NULL, "\0", &prev);
+			if (irc == NULL)
+				return MIRCNOTFOUND;
+			if (parsemeta(meta) < 0)
+				return MIRCERR;
+			if (parseirc(irc) < 0)
+				return MMERR;
+		} else {
+			irc = strtok_r(msg, "\0", &prev);
+			if (irc == NULL)
+				return MIRCNOTFOUND;
+			if (parseirc(irc) < 0)
+				return MIRCERR;
+		}
+	}
+	return MNOERR;
+}
+
+int
+botthink(BotState *b)
+{
+	char *buf;
+	size_t buflen;
+	enum BotError e;
+
+	e = validatemsg(b);
+	/* TODO: remove this switch, should return e and be
+	 *handled at calles side
+	 */
+	switch (e) {
+	case BNOERR:
+		break;
+	case BEOF:
+		return -2;
+	case BHUNGRY:
+		return 1;
+	case BFATAL:
+	default:
+		return -1;
+	}
+
+	buf = (char *)incbuf;
+	buflen = b->inlen;
+	if (b->overrun != NULL) {
 		buf = b->overrun;
 		buflen = b->olen;
 	}
-
-	meta = NULL;
-	char *msg;
-	char *msgprev, *prev;
 
 	/* TODO: test this, it's possible it's over writing
 	 * meaningful data with '\0'. Propably we should
@@ -116,32 +169,19 @@ botthink(BotState *b)
 	 * there is always one last byte available to zero
 	 */
 	buf[buflen] = '\0';
-	/* TODO: make sure buf is null terminated */
-	for (msg = strtok_r(buf, "\r\n", &msgprev); msg != NULL;
-	     msg = strtok_r(NULL, "\r\n", &msgprev)) {
-		if (*msg == '@') {
-			meta = strtok_r(msg, " ", &prev);
-			if (meta == NULL)
-				/* TODO: log and ignore this message */
-				goto err;
-			irc = strtok_r(NULL, "\0", &prev);
-			if (irc == NULL)
-				/* TODO: log and ignore this message */
-				goto err;
-			if (parsemeta(meta) < 0)
-				goto err;
-			if (parseirc(irc) < 0)
-				goto err;
-		} else {
-			irc = strtok_r(msg, "\0", &prev);
-			if (irc == NULL)
-				/* idem */
-				return -1;
-			if (parseirc(irc) < 0)
-				goto err;
-		}
+
+	switch (breakmsg(buf)) {
+	case BNOERR:
+		break;
+	case MMNOTFOUND:
+	case MIRCNOTFOUND:
+	case MMERR:
+	case MIRCERR:
+		/* TODO: log and ignore this message when it makes sense */
+		return -3;
 	}
-err:
+
+	/* TODO: see main.c comment */
 	if (b->overrun != NULL) {
 		free(b->overrun);
 		b->overrun = NULL;

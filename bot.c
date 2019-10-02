@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "resp.h"
-#include "irc.h"
+#include "message.h"
 #include "bot.h"
 
 static uint8_t incbuf[MAX_INCOMEBUF];

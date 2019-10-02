@@ -6,7 +6,7 @@
 
 #include <unistd.h>
 
-#include "irc.h"
+#include "message.h"
 #include "resp.h"
 
 #define USED(x)  \

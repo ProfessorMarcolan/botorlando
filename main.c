@@ -14,7 +14,7 @@
 
 #include "conn.h"
 #include "resp.h"
-#include "irc.h"
+#include "message.h"
 #include "bot.h"
 
 static void

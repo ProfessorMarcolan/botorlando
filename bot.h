@@ -14,7 +14,7 @@ struct channel {
 typedef struct BotState BotState;
 struct BotState {
 	channel chans;
-	Irc msg;
+	Message msg;
 
 	Response *r;
 	char *input;

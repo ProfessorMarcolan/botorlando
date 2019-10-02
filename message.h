@@ -19,10 +19,16 @@ struct meta {
 	emotesarr emotes;
 };
 
-typedef struct Irc Irc;
-struct Irc {
+typedef struct Message Message;
+struct Message {
 	meta m;
 	char *data;
+};
+
+enum MessageError {
+	MNOERR,
+	MMERR,
+	MIRC
 };
 
 int parseirc(char *);

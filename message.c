@@ -6,13 +6,9 @@
 
 #include <unistd.h>
 
+#include "misc.h"
 #include "message.h"
 #include "resp.h"
-
-#define USED(x)  \
-	if (x) { \
-	} else { \
-	}
 
 enum HASHVAL {
 	HNUM,
@@ -346,5 +342,3 @@ parsemeta(char *buf)
 	}
 	return 0;
 }
-
-#undef USED

@@ -66,7 +66,7 @@ dial(char *address)
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(porti);
 	addr.sin_addr = *((struct in_addr *)url->h_addr);
-	fd = socket(AF_INET, SOCK_STREAM, 0);
+	fd = socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, 0);
 	if (fd < 0)
 		goto ret;
 

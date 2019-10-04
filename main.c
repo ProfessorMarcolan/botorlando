@@ -36,6 +36,9 @@ static void
 sighandler(int sig)
 {
 	USED(sig)
+	if(errno > 0) {
+		fprintf(stderr, "bot: %s\n", strerror(errno));
+	}
 	if (gnetfd != 0) {
 		if (close(gnetfd) < 0) {
 			sysfatal("close: %s\n", strerror(errno));
@@ -43,6 +46,8 @@ sighandler(int sig)
 	}
 	exit(EXIT_FAILURE);
 }
+
+/* TODO: prototype everything in .*\.c files */
 
 /* TODO: there's a rare double free bug going on.
  * probably related with realloc freeing the memory
@@ -79,6 +84,9 @@ main(int argc, char **argv)
 	sigr = signal(SIGQUIT, sighandler);
 	if (sigr == SIG_ERR)
 		sysfatal("bot: cannot register SIGQUIT: %s\n", strerror(errno));
+	sigr = signal(SIGABRT, sighandler);
+	if(sigr == SIG_ERR)
+		sysfatal("bot: cannot register SIGABRT: %s\n", strerror(errno));
 
 	botinit(&bot);
 	if (argc < 2)

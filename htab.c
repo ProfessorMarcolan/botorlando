@@ -94,6 +94,28 @@ Hhas(Htab *t, void *key)
 	return Hindex(t, key) >= 0;
 }
 
+static void
+tabgrow(Htab *t)
+{
+	size_t oldlen, i;
+	Hent *oldents;
+
+	oldents = t->ents;
+	oldlen = t->len;
+	t->len *= 2;
+	t->items = 0;
+	/* TODO: should use relloac,  but isnt working, figure out */
+	t->ents = calloc(t->len, sizeof(Hent));
+	if(t->ents == NULL){
+		/* TODO: abort() */
+		return;
+	}
+	for(i=0; i < oldlen; i++)
+		if(oldents[i].hash)
+			Hput(t, oldents[i].key, oldents[i].data);
+	free(oldents);
+}
+
 /* create entry key with data, it assumes entry is not present */
 void
 Hput(Htab *t, void *key, void *data)
@@ -113,7 +135,9 @@ Hput(Htab *t, void *key, void *data)
 	t->ents[i].data = data;
 	t->items++;
 	/* TODO: mem holders? */
-	/* TODO: grow */
+	/* 0.5 grow factor */
+	if(t->len < t->items*2)
+		tabgrow(t);
 }
 
 /* create or update entry key with data */

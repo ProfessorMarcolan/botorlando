@@ -15,8 +15,8 @@ struct Hent {
 /* TODO: cmp, hash function? */
 /* TODO: mem hold fns? */
 struct Htab {
-	size_t len; /* number of entries */
 	size_t items; /* current load */
+	size_t len; /* number of entries */
 	Hent *ents;
 };
 
@@ -85,7 +85,7 @@ lookup:
 void *
 Hget(Htab *t, void *key)
 {
-	int i;
+	long i;
 
 	i = Hindex(t, key);
 	if (i >= 0)
@@ -116,6 +116,7 @@ tabgrow(Htab *t)
 		/* TODO: abort() */
 		return;
 	}
+	/* TODO: if we cant do relloac up there, use memcpy instead here */
 	for(i=0; i < oldlen; i++)
 		if(oldents[i].hash)
 			Hput(t, oldents[i].key, oldents[i].data);
@@ -127,7 +128,7 @@ void
 Hput(Htab *t, void *key, void *data)
 {
 	uint32_t hash;
-	int i, delta;
+	size_t i, delta;
 
 	delta = 0;
 	hash = Hhash(key);
@@ -150,7 +151,7 @@ Hput(Htab *t, void *key, void *data)
 void
 Hset(Htab *t, void *key, void *data)
 {
-	int i;
+	long i;
 
 	i = Hindex(t, key);
 	if (i >= 0) {
@@ -164,10 +165,12 @@ Hset(Htab *t, void *key, void *data)
 void
 Hrm(Htab *t, void *key)
 {
-	int i;
+	long i;
 
 	i = Hindex(t, key);
-	t->ents[i].hash = 0;
+	/* if key exits */
+	if(i >= 0)
+		t->ents[i].hash = 0;
 	/* TODO: call mem holders? */
 }
 
@@ -193,7 +196,7 @@ Hmake(void)
 		return NULL;
 	/* TODO: set mem holders? */
 	tmp->len = HTABINIT;
-	tmp->ents = calloc(1, sizeof(Hent));
+	tmp->ents = calloc(HTABINIT, sizeof(Hent));
 	if (tmp->ents == NULL)
 		/* TODO: abort() ? */
 		return NULL;

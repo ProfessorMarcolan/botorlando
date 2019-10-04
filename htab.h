@@ -11,6 +11,6 @@ void Hrm(Htab *, void *);
 void *Hget(Htab *, void *);
 int Hhas(Htab *, void *);
 void Hfree(Htab *t);
-Htab *Hnew(void);
+Htab *Hmake(void);
 
 #endif

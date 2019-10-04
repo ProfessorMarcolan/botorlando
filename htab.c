@@ -153,7 +153,7 @@ Hfree(Htab *t)
 }
 
 Htab *
-Hnew()
+Hmake(void)
 {
 	Htab *tmp;
 

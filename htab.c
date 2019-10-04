@@ -50,10 +50,16 @@ Hhash(void *key)
 }
 
 static int
+Hcmp(char * s1, char *s2)
+{
+	return strcmp(s1, s2) == 0;
+}
+
+static long
 Hindex(Htab *t, void *key)
 {
 	uint32_t hash;
-	int i, delta;
+	size_t i, delta;
 
 	delta = 0;
 	hash = Hhash(key);
@@ -68,7 +74,7 @@ lookup:
 	if (!t->ents[i].hash)
 		return -1;
 	/* collision */
-	if (!(strcmp(t->ents[i].key, key) == 0)) {
+	if (!Hcmp(t->ents[i].key, key)) {
 		delta++;
 		i = (hash + delta) & (t->len - 1);
 		goto lookup;

@@ -15,8 +15,8 @@ struct Hent {
 /* TODO: cmp, hash function? */
 /* TODO: mem hold fns? */
 struct Htab {
-	size_t items; /* current load */
-	size_t len; /* number of entries */
+	size_t max; /* number of entries */
+	size_t nents; /* current load */
 	Hent *ents;
 };
 
@@ -63,12 +63,12 @@ Hindex(Htab *t, void *key)
 
 	delta = 0;
 	hash = Hhash(key);
-	i = hash & (t->len - 1);
+	i = hash & (t->max - 1);
 
 lookup:
 	while (t->ents[i].hash && t->ents[i].hash != hash) {
 		delta++;
-		i = (hash + delta) & (t->len - 1);
+		i = (hash + delta) & (t->max - 1);
 	}
 	/* not found */
 	if (!t->ents[i].hash)
@@ -76,7 +76,7 @@ lookup:
 	/* collision */
 	if (!Hcmp(t->ents[i].key, key)) {
 		delta++;
-		i = (hash + delta) & (t->len - 1);
+		i = (hash + delta) & (t->max - 1);
 		goto lookup;
 	}
 	return i;
@@ -107,11 +107,11 @@ tabgrow(Htab *t)
 	Hent *oldents;
 
 	oldents = t->ents;
-	oldlen = t->len;
-	t->len *= 2;
-	t->items = 0;
+	oldlen = t->max;
+	t->max *= 2;
+	t->nents = 0;
 	/* TODO: should use relloac,  but isnt working, figure out */
-	t->ents = calloc(t->len, sizeof(Hent));
+	t->ents = calloc(t->max, sizeof(Hent));
 	if(t->ents == NULL){
 		/* TODO: abort() */
 		return;
@@ -132,18 +132,18 @@ Hput(Htab *t, void *key, void *data)
 
 	delta = 0;
 	hash = Hhash(key);
-	i = hash & (t->len - 1);
+	i = hash & (t->max - 1);
 	while (t->ents[i].hash) {
 		delta++;
-		i = (hash + delta) & (t->len - 1);
+		i = (hash + delta) & (t->max - 1);
 	}
 	t->ents[i].hash = hash;
 	t->ents[i].key = key;
 	t->ents[i].data = data;
-	t->items++;
+	t->nents++;
 	/* TODO: mem holders? */
 	/* 0.5 grow factor */
-	if(t->len < t->items*2)
+	if(t->max < t->nents*2)
 		tabgrow(t);
 }
 
@@ -195,7 +195,7 @@ Hmake(void)
 		/* TODO: abort() ? */
 		return NULL;
 	/* TODO: set mem holders? */
-	tmp->len = HTABINIT;
+	tmp->max = HTABINIT;
 	tmp->ents = calloc(HTABINIT, sizeof(Hent));
 	if (tmp->ents == NULL)
 		/* TODO: abort() ? */

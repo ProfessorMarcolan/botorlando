@@ -9,7 +9,7 @@ static const char *hentsdecl = "static const Hent ircents[%u] = {\n";
 static const char *hentsrow = "\t[%u] = { .hash=%u, .key=\"%s\" .data=%s },\n";
 static const char *hentsclose = "};";
 static const char *htabfmt = "\nstatic const Htab irctab = {\n"
-			     "\t{.max = %u, .nents = %u, .ents = ircents}\n"
+			     "\t.max = %u, .nents = %u, .ents = ircents\n"
 			     "};\n";
 
 int
@@ -50,8 +50,23 @@ main(void)
 			goto err;
 		}
 		tmpirc = malloc(strlen(irc) + 1);
+		if (tmpirc == NULL) {
+			perror("ircgen");
+			goto err;
+		}
 		tmpfn = malloc(strlen(fn) + 1);
+		if (tmpfn == NULL) {
+			perror("ircgen");
+			goto err;
+		}
 		Hput(t, strcpy(tmpirc, irc), strcpy(tmpfn, fn));
+	}
+
+	if (ferror(f) != 0) {
+		if (feof(f) == 0) {
+			perror("ircgen");
+			goto err;
+		}
 	}
 
 	printf(hentsdecl, t->max);

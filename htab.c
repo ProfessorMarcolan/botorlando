@@ -5,20 +5,6 @@
 
 #include "htab.h"
 
-typedef struct Hent Hent;
-struct Hent {
-	uint32_t hash; /* > 1 means data is in the table */
-	void *data;
-	void *key;
-};
-
-/* TODO: cmp, hash function? */
-/* TODO: mem hold fns? */
-struct Htab {
-	size_t max; /* number of entries */
-	size_t nents; /* current load */
-	Hent *ents;
-};
 static int Hcmp(char*, char*);
 static void tabgrow(Htab *);
 static long Hindex(Htab *, void*);
@@ -94,7 +80,7 @@ Hget(Htab *t, void *key)
 
 	i = Hindex(t, key);
 	if (i >= 0)
-		return t->ents[i].data;
+		return t->ents[i].data.any;
 	else
 		return NULL;
 }
@@ -123,7 +109,7 @@ tabgrow(Htab *t)
 	/* TODO: if we cant do relloac up there, use memcpy instead here */
 	for(i=0; i < oldlen; i++)
 		if(oldents[i].hash)
-			Hput(t, oldents[i].key, oldents[i].data);
+			Hput(t, oldents[i].key, oldents[i].data.any);
 	free(oldents);
 }
 
@@ -143,7 +129,7 @@ Hput(Htab *t, void *key, void *data)
 	}
 	t->ents[i].hash = hash;
 	t->ents[i].key = key;
-	t->ents[i].data = data;
+	t->ents[i].data.any = data;
 	t->nents++;
 	/* TODO: mem holders? */
 	/* 0.5 grow factor */
@@ -160,7 +146,7 @@ Hset(Htab *t, void *key, void *data)
 	i = Hindex(t, key);
 	if (i >= 0) {
 		/* TODO: call mem holders? */
-		t->ents[i].data = data;
+		t->ents[i].data.any = data;
 		return;
 	}
 	Hput(t, key, data);

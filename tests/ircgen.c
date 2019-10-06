@@ -6,7 +6,7 @@
 #include "../htab.c"
 
 static const char *hentsdecl = "static const Hent ircents[%u] = {\n";
-static const char *hentsrow = "\t[%u] = { .hash=%u, .key=\"%s\" .data=%s },\n";
+static const char *hentsrow = "\t[%u] = { .hash=%u, .key=\"%s\", .data.%s=%s },\n";
 static const char *hentsclose = "};";
 static const char *htabfmt = "\nstatic const Htab irctab = {\n"
 			     "\t.max = %u, .nents = %u, .ents = ircents\n"
@@ -71,9 +71,14 @@ main(void)
 
 	printf(hentsdecl, t->max);
 	for (i = 0; i < t->max; i++) {
-		if (t->ents[i].hash)
+		if (t->ents[i].hash) {
+			char *whence = "fn";
+			if(strcmp(t->ents[i].data.any, "NULL") == 0){
+				whence = "any";
+			}
 			printf(hentsrow, i, t->ents[i].hash, t->ents[i].key,
-			       t->ents[i].data);
+			       whence, t->ents[i].data.any);
+		}
 	}
 
 	puts(hentsclose);

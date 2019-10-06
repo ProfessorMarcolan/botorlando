@@ -15,6 +15,7 @@
 
 #include "conn.h"
 #include "resp.h"
+#include "htab.h"
 #include "message.h"
 #include "bot.h"
 #include "misc.h"
@@ -39,7 +40,7 @@ static void
 sighandler(int sig)
 {
 	USED(sig)
-	if(errno > 0) {
+	if (errno > 0) {
 		fprintf(stderr, "bot: %s\n", strerror(errno));
 	}
 	if (gnetfd != 0) {
@@ -88,7 +89,7 @@ main(int argc, char **argv)
 	if (sigr == SIG_ERR)
 		sysfatal("bot: cannot register SIGQUIT: %s\n", strerror(errno));
 	sigr = signal(SIGABRT, sighandler);
-	if(sigr == SIG_ERR)
+	if (sigr == SIG_ERR)
 		sysfatal("bot: cannot register SIGABRT: %s\n", strerror(errno));
 
 	botinit(&bot);

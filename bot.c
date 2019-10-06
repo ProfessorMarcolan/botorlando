@@ -4,12 +4,13 @@
 #include <unistd.h>
 
 #include "resp.h"
+#include "htab.h"
 #include "message.h"
 #include "bot.h"
 
 static uint8_t incbuf[MAX_INCOMEBUF];
 
-static enum MessageError breakmsg(Htab*, char*);
+static enum MessageError breakmsg(Htab *, char *);
 static enum BotError validatemsg(BotState *);
 static int botwritejoins(BotState *b);
 
@@ -107,7 +108,7 @@ validatemsg(BotState *b)
 }
 
 static enum MessageError
-breakmsg(char *buf)
+breakmsg(Htab *metatab, char *buf)
 {
 	char *irc, *meta;
 	char *msg;
@@ -122,7 +123,7 @@ breakmsg(char *buf)
 			irc = strtok_r(NULL, "\0", &prev);
 			if (irc == NULL)
 				return MIRCNOTFOUND;
-			if (parsemeta(meta) < 0)
+			if (parsemeta(metatab, meta) < 0)
 				return MIRCERR;
 			if (parseirc(irc) < 0)
 				return MMERR;
@@ -143,6 +144,7 @@ botthink(BotState *b)
 	char *buf;
 	size_t buflen;
 	enum BotError e;
+	Htab *metatab;
 
 	e = validatemsg(b);
 	/* TODO: remove this switch, should return e and be
@@ -173,8 +175,9 @@ botthink(BotState *b)
 	 * there is always one last byte available to zero
 	 */
 	buf[buflen] = '\0';
+	metatab = Hmake();
 
-	switch (breakmsg(buf)) {
+	switch (breakmsg(metatab, buf)) {
 	case BNOERR:
 		break;
 	case MMNOTFOUND:
@@ -194,6 +197,6 @@ botthink(BotState *b)
 
 	if (b->chans.nchan > 0)
 		botwritejoins(b);
-
+	Hfree(metatab);
 	return 0;
 }

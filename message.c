@@ -7,39 +7,11 @@
 #include <unistd.h>
 
 #include "misc.h"
+#include "htab.h"
 #include "message.h"
 #include "resp.h"
 
-enum HASHVAL {
-	HNUM,
-	HSTR,
-	HARR,
-	HFUNC,
-};
-
 enum { EMINIT = 1, EMGROW = 2 };
-
-typedef struct val val;
-struct val {
-	enum HASHVAL typ;
-	union {
-		char *str;
-		int num;
-		int (*fn)(char *);
-	} u;
-};
-
-typedef struct Strval Strval;
-struct Strval {
-	char *key;
-	val v;
-	Strval *next;
-};
-
-typedef unsigned long ulong;
-typedef unsigned char uchar;
-
-enum { HASH_MUL_PRIME = 31L, NHASH = 4099 };
 
 enum chatmode {
 	SUBMODE = 1 << 0,
@@ -56,8 +28,7 @@ enum usermode {
 	TURBOUSER = 1 << 4,
 };
 
-
-static int nlistmsg(char*);
+static int nlistmsg(char *);
 static int errmsg(char *);
 static int pongmsg(char *);
 static int privmsg(char *);
@@ -82,67 +53,6 @@ static uint8_t
 setflag(uint8_t flags, uint8_t flag)
 {
 	return flags | flag;
-}
-
-static ulong
-hash(char *str)
-{
-	ulong sum;
-	uchar *p;
-	sum = 0;
-	for (p = (uchar *)str; *p != '\0'; p++) {
-		sum = sum * HASH_MUL_PRIME + *p;
-	}
-	return sum % NHASH;
-}
-
-static Strval *metatab[NHASH];
-
-static Strval *
-lookupmeta(char *key, ulong *csum)
-{
-	ulong sum;
-	Strval *tmp;
-	static int reties;
-
-	sum = hash(key);
-	if (csum != NULL)
-		*csum = sum;
-	for (tmp = metatab[sum]; tmp != NULL; tmp = tmp->next) {
-		/* FIXME: tmp is never null if there's a collision */
-		if (reties++ > 3) {
-			reties = 0;
-			return NULL;
-		}
-
-		if (strcmp(key, tmp->key) == 0)
-			return tmp;
-	}
-	return NULL;
-}
-
-static Strval *
-createntry(char *key, val v)
-{
-	ulong sum;
-	Strval *tmp;
-
-	tmp = lookupmeta(key, &sum);
-	/* FIXME: lookupmeta mightg return NULL even
-	 * with allocated memory.
-	 */
-	if (tmp == NULL) {
-		tmp = calloc(1, sizeof(Strval));
-		if (tmp == NULL) {
-			return NULL;
-		}
-	}
-
-	tmp->v = v;
-	tmp->key = key;
-	tmp->next = metatab[sum];
-	metatab[sum] = tmp;
-	return tmp;
 }
 
 static int
@@ -200,155 +110,92 @@ errmsg(char *args)
 static int
 nlistmsg(char *args)
 {
-	USED(args);
+	USED(args)
 	/* fprintf(stdout, "NAMELIST: %s\n", args); */
 	return 0;
 }
 
-static const Strval irc_action[NHASH] = {
-	[1445] = { .key = "PRIVMSG",
-		   { .typ = HFUNC, .u.fn = &privmsg },
-		   .next = NULL },
-	[621] = { .key = "PING",
-		  { .typ = HFUNC, .u.fn = &pongmsg },
-		  .next = NULL },
-	[1606] = { .key = "GLOBALUSERSTATE",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[1000] = { .key = "ROOMSTATE",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[692] = { .key = "NOTICE",
-		  { .typ = HFUNC, .u.fn = NULL },
-		  .next = NULL },
-	[827] = { .key = "CLEARMSG",
-		  { .typ = HFUNC, .u.fn = NULL },
-		  .next = NULL },
-	[2701] = { .key = "HOSTTARGET",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[3984] = { .key = "CLEARCHAT",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[2687] = { .key = "RECONNECT",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[2463] = { .key = "USERNOTICE",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[1947] = { .key = "USERSTATE",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[2936] = { .key = "NAMES",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL },
-	[1268] = { .key = "PART", { .typ = HFUNC, .u.fn = NULL }, .next = NULL },
-	[3750] = { .key = "JOIN", { .typ = HFUNC, .u.fn = NULL }, .next = NULL },
-	[898] = { .key = "CAP", { .typ = HFUNC, .u.fn = NULL }, .next = NULL },
-	[2576] = { .key = "001",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_WELCOME */
-	[2577] = { .key = "002",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_YOURHOST */
-	[2578] = { .key = "003",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_CREATED */
-	[2579] = { .key = "004",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_MYINFO */
-	[1578] = { .key = "372",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_MOTD */
-	[1581] = { .key = "375",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_MOTDSTART */
-	[1582] = { .key = "376",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_ENDOFMOTD */
-	[1517] = { .key = "353",
-		   { .typ = HFUNC, .u.fn = &nlistmsg },
-		   .next = NULL }, /* RPL_NAMREPLY */
-	[1551] = { .key = "366",
-		   { .typ = HFUNC, .u.fn = NULL },
-		   .next = NULL }, /* RPL_ENDOFNAMES */
-	[2383] = { .key = "421",
-		   { .typ = HFUNC, .u.fn = &errmsg },
-		   .next = NULL }, /* ERR_UNKNOWNCOMMAND */
+static Hent ircents[64] = {
+	[3] = { .hash = 13955, .key = "353", .data.any = NULL },
+	[5] = { .hash = 69784005, .key = "ROOMSTATE", .data.any = NULL },
+	[17] = { .hash = 14161, .key = "421", .data.fn = &errmsg },
+	[20] = { .hash = 138641172, .key = "RECONNECT", .data.any = NULL },
+	[21] = { .hash = 120662741, .key = "USERNOTICE", .data.any = NULL },
+	[22] = { .hash = 13974, .key = "366", .data.any = NULL },
+	[30] = { .hash = 324574, .key = "JOIN", .data.any = NULL },
+	[32] = { .hash = 18272, .key = "CAP", .data.any = NULL },
+	[34] = { .hash = 13986, .key = "372", .data.any = NULL },
+	[35] = { .hash = 5398947, .key = "NAMES", .data.any = NULL },
+	[36] = { .hash = 159563556, .key = "HOSTTARGET", .data.any = NULL },
+	[37] = { .hash = 157693028, .key = "CLEARCHAT", .data.any = NULL },
+	[38] = { .hash = 13989, .key = "375", .data.any = NULL },
+	[39] = { .hash = 91140647, .key = "PRIVMSG", .data.fn = &privmsg },
+	[40] = { .hash = 347687, .key = "PING", .data.fn = &pongmsg },
+	[41] = { .hash = 13990, .key = "376", .data.any = NULL },
+	[49] = { .hash = 13105, .key = "001", .data.any = NULL },
+	[50] = { .hash = 13106, .key = "002", .data.any = NULL },
+	[51] = { .hash = 13107, .key = "003", .data.any = NULL },
+	[52] = { .hash = 345716, .key = "PART", .data.any = NULL },
+	[53] = { .hash = 87330165, .key = "NOTICE", .data.any = NULL },
+	[54] = { .hash = 175693045, .key = "USERSTATE", .data.any = NULL },
+	[55] = { .hash = 9860855, .key = "CLEARMSG", .data.any = NULL },
+	[56] = { .hash = 13108, .key = "004", .data.any = NULL },
 };
 
-static const Strval *
-actionslookup(char *key)
-{
-	ulong sum;
-
-	sum = hash(key);
-	if (irc_action[sum].key == NULL) {
-		return NULL;
-	}
-	if (strcmp(irc_action[sum].key, key) != 0) {
-		return NULL;
-	}
-	return &irc_action[sum];
-}
+static Htab irctab = {
+	.max = 64,
+	.nents = 24,
+	.ents = ircents,
+};
 
 int
 parseirc(char *p)
 {
 	char *cmd, *args, *tcmd;
-	const Strval *tmp;
+	int (*tmp)(char *);
 
 	tcmd = strtok(p, " ");
 	if (tcmd == NULL) {
 		fprintf(stderr, "tcmd NULL\n");
 		return -1;
 	}
-	actionslookup(tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
+	Hget(&irctab, tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
 	if (cmd == NULL) {
 		fprintf(stderr, "cmd (%s) not found\n", p);
 		return -1;
 	}
 	args = strtok(NULL, "\0");
-	tmp = actionslookup(cmd);
-	if (tmp == NULL) {
+	/* TODO: set non NULL values in ircgen so we could
+	 * ignore this check and use NULL value of Hget instead
+	 */
+	if (!Hhas(&irctab, args)) {
 		fprintf(stderr, "\nNO SUCH COMMAND %s\n", cmd);
 		return -1;
 	}
-	switch (tmp->v.typ) {
-	default:
-		fprintf(stderr, "unknown type %d", tmp->v.typ);
-		return -1;
-	case HFUNC:
-		if (tmp->v.u.fn == NULL) {
-			return 0;
-		}
-		return tmp->v.u.fn(args);
-	case HNUM:
-	case HSTR:
-	case HARR:
-		break;
+	*(void **)(&tmp) = Hget(&irctab, cmd);
+	if (tmp == NULL) {
+		return 0;
 	}
-	return 0;
+	return tmp(args);
 }
 
+/* TODO: metatab could be static allocated and reused here.
+ * that would remove the first argument.
+ */
 int
-parsemeta(char *buf)
+parsemeta(Htab *metatab, char *buf)
 {
 	char *sem, *key, *value;
 	char *psem, *pkey;
 
 	for (sem = strtok_r((char *)++buf, ";", &psem); sem != NULL;
 	     sem = strtok_r(NULL, ";", &psem)) {
-		val v;
-
 		key = strtok_r(sem, "=", &pkey);
 		value = strtok_r(NULL, "\0", &pkey);
 		if (!key || !value) {
 			continue;
 		}
-		v.typ = HSTR;
-		v.u.str = value;
-		createntry(key, v);
+		Hput(metatab, key, value);
 	}
 	return 0;
 }

@@ -5,11 +5,11 @@
 
 #include "htab.h"
 
-static int Hcmp(char*, char*);
+static int Hcmp(char *, char *);
 static void tabgrow(Htab *);
-static long Hindex(Htab *, void*);
+static long Hindex(Htab *, void *);
 static uint32_t Hhash(void *);
-static uint32_t strhash(void*);
+static uint32_t strhash(void *);
 
 static uint32_t
 strhash(void *key)
@@ -41,7 +41,7 @@ Hhash(void *key)
 }
 
 static int
-Hcmp(char * s1, char *s2)
+Hcmp(char *s1, char *s2)
 {
 	return strcmp(s1, s2) == 0;
 }
@@ -103,12 +103,12 @@ tabgrow(Htab *t)
 	t->nents = 0;
 	/* TODO: should use relloac,  but isnt working, figure out */
 	t->ents = calloc(t->max, sizeof(Hent));
-	if(t->ents == NULL)
+	if (t->ents == NULL)
 		/* TODO: abort() */
 		return;
 	/* TODO: if we cant do relloac up there, use memcpy instead here */
-	for(i=0; i < oldlen; i++)
-		if(oldents[i].hash)
+	for (i = 0; i < oldlen; i++)
+		if (oldents[i].hash)
 			Hput(t, oldents[i].key, oldents[i].data.any);
 	free(oldents);
 }
@@ -133,7 +133,7 @@ Hput(Htab *t, void *key, void *data)
 	t->nents++;
 	/* TODO: mem holders? */
 	/* 0.5 grow factor */
-	if(t->max < t->nents*2)
+	if (t->max < t->nents * 2)
 		tabgrow(t);
 }
 
@@ -159,7 +159,7 @@ Hrm(Htab *t, void *key)
 
 	i = Hindex(t, key);
 	/* if key exits */
-	if(i >= 0)
+	if (i >= 0)
 		t->ents[i].hash = 0;
 	/* TODO: call mem holders? */
 }

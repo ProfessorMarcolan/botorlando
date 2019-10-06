@@ -9,7 +9,7 @@ struct Hent {
 	void *key;
 	union {
 		void *any;
-		int (*fn)(char*);
+		int (*fn)(char *);
 	} data;
 };
 

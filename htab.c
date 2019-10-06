@@ -112,10 +112,9 @@ tabgrow(Htab *t)
 	t->nents = 0;
 	/* TODO: should use relloac,  but isnt working, figure out */
 	t->ents = calloc(t->max, sizeof(Hent));
-	if(t->ents == NULL){
+	if(t->ents == NULL)
 		/* TODO: abort() */
 		return;
-	}
 	/* TODO: if we cant do relloac up there, use memcpy instead here */
 	for(i=0; i < oldlen; i++)
 		if(oldents[i].hash)
@@ -177,9 +176,8 @@ Hrm(Htab *t, void *key)
 void
 Hfree(Htab *t)
 {
-	if (t == NULL) {
+	if (t == NULL)
 		return;
-	}
 	/* TODO: call mem holders? */
 	free(t->ents);
 	free(t);

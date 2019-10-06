@@ -9,6 +9,10 @@
 
 static uint8_t incbuf[MAX_INCOMEBUF];
 
+static enum MessageError breakmsg(Htab*, char*);
+static enum BotError validatemsg(BotState *);
+static int botwritejoins(BotState *b);
+
 static int
 botwritejoins(BotState *b)
 {

@@ -1,6 +1,3 @@
-#ifndef BOT_H
-#define BOT_H
-
 enum { MAX_INCOMEBUF = 8192 };
 
 typedef struct channel channel;
@@ -30,5 +27,3 @@ int botjoinchan(BotState *, char *);
 int botsigin(BotState *, char *, char *);
 int botthink(BotState *);
 void botinit(BotState *);
-
-#endif

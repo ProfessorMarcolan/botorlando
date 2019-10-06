@@ -1,6 +1,3 @@
-#ifndef MESSAGE_H
-#define MESSAGE_H
-
 typedef struct emote emote;
 struct emote {
 	int id;
@@ -28,6 +25,4 @@ struct Message {
 enum MessageError { MNOERR, MMNOTFOUND, MIRCNOTFOUND, MMERR, MIRCERR };
 
 int parseirc(char *);
-int parsemeta(char *);
-
-#endif
+int parsemeta(Htab *, char *);

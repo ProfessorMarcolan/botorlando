@@ -56,6 +56,16 @@ enum usermode {
 	TURBOUSER = 1 << 4,
 };
 
+
+static int nlistmsg(char*);
+static int errmsg(char *);
+static int pongmsg(char *);
+static int privmsg(char *);
+static int addemote(meta *, emote);
+static uint8_t setflag(uint8_t, uint8_t);
+static uint8_t clearflag(uint8_t, uint8_t);
+static int hasflag(uint8_t flags, uint8_t flag);
+
 static int
 hasflag(uint8_t flags, uint8_t flag)
 {

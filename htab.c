@@ -19,6 +19,11 @@ struct Htab {
 	size_t nents; /* current load */
 	Hent *ents;
 };
+static int Hcmp(char*, char*);
+static void tabgrow(Htab *);
+static long Hindex(Htab *, void*);
+static uint32_t Hhash(void *);
+static uint32_t strhash(void*);
 
 static uint32_t
 strhash(void *key)

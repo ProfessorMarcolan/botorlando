@@ -19,6 +19,11 @@
 #include "bot.h"
 #include "misc.h"
 
+static void sysfatal(char *, ...);
+static void sighandler(int);
+
+static int gnetfd;
+
 static void
 sysfatal(char *fmt, ...)
 {
@@ -28,8 +33,6 @@ sysfatal(char *fmt, ...)
 	va_end(argp);
 	exit(EXIT_FAILURE);
 }
-
-static int gnetfd;
 
 /* TODO: use posix portable version: sigaction(2) */
 static void

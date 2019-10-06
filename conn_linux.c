@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <netdb.h>
 
+static int parseaddr(char *, char *, char *);
+
 /* 253 domain name + 5 port (1<<16) + 1 null + 1 ':'*/
 enum { MAXPORTSIZE = 5, MAXDOMAINBUFSIZE = 253 + MAXPORTSIZE + 1 + 1 };
 static int

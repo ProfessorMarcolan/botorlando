@@ -28,7 +28,7 @@ gdb: $(PROG)
 	@sh -c 'env `cat env.sh` gdb --quiet --args $(PROG) $(IP) `cat joins`'
 
 valgrind: $(PROG)
-	@sh -c 'env `cat env.sh` valgrind --leak-check=full ./$(PROG) $(IP) `cat joins`'
+	@sh -c 'env `cat env.sh` valgrind -s --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(PROG) $(IP) `cat joins`'
 
 fmt:
 	clang-format -i $(SRC) $(HDR)

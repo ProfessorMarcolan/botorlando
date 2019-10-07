@@ -8,7 +8,7 @@ struct channel {
 	char **v;
 };
 
-enum BotError { BNOERR, BFATAL, BEOF, BHUNGRY };
+enum BotError { BNOERR, BMEMFATAL, BEOF, BHUNGRY, BPARSEERR };
 
 typedef struct BotState BotState;
 struct BotState {
@@ -25,5 +25,5 @@ struct BotState {
 
 int botjoinchan(BotState *, char *);
 int botsigin(BotState *, char *, char *);
-int botthink(BotState *);
+enum BotError botthink(BotState *);
 void botinit(BotState *);

@@ -32,9 +32,14 @@ sysfatal(char *fmt, ...)
 	va_start(argp, fmt);
 	vfprintf(stderr, fmt, argp);
 	va_end(argp);
-	exit(EXIT_FAILURE);
+	abort();
 }
 
+/* NOTE: if network file descriptor isn't closed before exit
+ * it causes the connection to be continued from where it
+ * was, thus in best scanario it breaks the parser.
+ * Never call exit anywhere else than here, use abort instead.
+ */
 /* TODO: use posix portable version: sigaction(2) */
 static void
 sighandler(int sig)
@@ -45,23 +50,12 @@ sighandler(int sig)
 	}
 	if (gnetfd != 0) {
 		if (close(gnetfd) < 0) {
-			sysfatal("close: %s\n", strerror(errno));
+			fprintf(stderr, "close: %s\n", strerror(errno));
 		}
 	}
 	exit(EXIT_FAILURE);
 }
 
-/* TODO: prototype everything in .*\.c files */
-
-/* TODO: there's a rare double free bug going on.
- * probably related with realloc freeing the memory
- * and then we are freeing it again on bot.c
- *
- * NOTE: this only happens if signals are not handled
- * thus it is related with restarts and tcp being reused/reconnected.
- * When double frees does not happen, it causes bad irc tokens and
- * leads to unkown commands
- */
 int
 main(int argc, char **argv)
 {
@@ -106,7 +100,7 @@ main(int argc, char **argv)
 
 	for (;;) {
 		ssize_t n;
-		int nn; /* FIXME */
+
 		if ((n = writeresp(gnetfd)) <= 0) {
 			if (n == 0) {
 				/* TODO: retries? */
@@ -123,11 +117,28 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		if ((nn = botthink(&bot)) < 0) {
-			if (nn != -2)
-				fprintf(stderr, "wot?\n");
-			/* TODO: shouldnt exit on irc errors, figure out when we should fatal */
-			exit(0);
+		switch (botthink(&bot)) {
+		case BEOF:
+			fprintf(stderr,
+				"bot: connection got an eof, retrying...\n");
+			/* TODO: retries */
+			abort();
+		case BHUNGRY:
+			continue;
+		case BMEMFATAL:
+			/* that means realloc failed, instead of crashing
+			 * just goto cleanup thus ignoring this message
+			 *
+			 * NOTE: this could lead to incomplete messages
+			 * being parsed, let's assume we are doing the correct
+			 * thing with realloc and it's extreme rare event
+			 */
+			fprintf(stderr, "bot: realloc: %s\n", strerror(errno));
+			continue;
+		case BPARSEERR:
+		case BNOERR:
+		default:
+			continue;
 		}
 	}
 }

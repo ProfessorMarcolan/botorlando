@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <netdb.h>
 
+#include "misc.h"
+
 static int parseaddr(char *, char *, char *);
 
 /* 253 domain name + 5 port (1<<16) + 1 null + 1 ':'*/
@@ -42,16 +44,8 @@ dial(char *address)
 	struct hostent *url;
 
 	port = NULL;
-	host = malloc(MAXDOMAINBUFSIZE);
-	if (host == NULL) {
-		fd = -1;
-		goto ret;
-	}
-	port = malloc(6);
-	if (port == NULL) {
-		fd = -1;
-		goto ret;
-	}
+	host = emalloc(MAXDOMAINBUFSIZE);
+	port = emalloc(6);
 	if (parseaddr(address, host, port) < 0) {
 		fd = -1;
 		goto ret;

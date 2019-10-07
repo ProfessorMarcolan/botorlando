@@ -7,6 +7,7 @@
 #include "htab.h"
 #include "message.h"
 #include "bot.h"
+#include "misc.h"
 
 static uint8_t incbuf[MAX_INCOMEBUF];
 
@@ -44,22 +45,14 @@ botinit(BotState *b)
 int
 botjoinchan(BotState *b, char *chan)
 {
-	char **tmp;
-
 	if (b->chans.v == NULL) {
-		b->chans.v = malloc(sizeof(channel));
-		if (b->chans.v == NULL) {
-			return -1;
-		}
+		b->chans.v = emalloc(sizeof(channel));
 		b->chans.max = 1;
 		b->chans.nchan = 0;
 	} else if (b->chans.nchan >= b->chans.max) {
-		tmp = realloc(b->chans.v, (2 * b->chans.max) * sizeof(channel));
-		if (tmp == NULL) {
-			return -1;
-		}
+		b->chans.v = erealloc(b->chans.v,
+				      (2 * b->chans.max) * sizeof(channel));
 		b->chans.max *= 2;
-		b->chans.v = tmp;
 	}
 	b->chans.v[b->chans.nchan] = chan;
 	return b->chans.nchan++;
@@ -79,14 +72,12 @@ validatemsg(BotState *b)
 	void *tmp;
 
 	if (b->inlen < 3) {
-		/* EOF, print? */
 		return BEOF;
 	}
 	if (b->input[b->inlen - 1] != '\n' && b->input[b->inlen - 2] != '\r') {
 		tmp = realloc(b->overrun, b->olen + b->inlen);
 		if (tmp == NULL)
-			/* TODO: cleanup and ignore this message */
-			return BFATAL;
+			return BMEMFATAL;
 
 		b->overrun = tmp;
 		memcpy(b->overrun + b->olen, incbuf, b->inlen);
@@ -97,8 +88,7 @@ validatemsg(BotState *b)
 	if (b->overrun != NULL) {
 		tmp = realloc(b->overrun, b->olen + b->inlen);
 		if (tmp == NULL)
-			/* TODO: cleanup and ignore this message */
-			return BFATAL;
+			return BMEMFATAL;
 
 		b->overrun = tmp;
 		memcpy(b->overrun + b->olen, b->input, b->inlen);
@@ -138,7 +128,7 @@ breakmsg(Htab *metatab, char *buf)
 	return MNOERR;
 }
 
-int
+enum BotError
 botthink(BotState *b)
 {
 	char *buf;
@@ -147,19 +137,8 @@ botthink(BotState *b)
 	Htab *metatab;
 
 	e = validatemsg(b);
-	/* TODO: remove this switch, should return e and be
-	 *handled at calles side
-	 */
-	switch (e) {
-	case BNOERR:
-		break;
-	case BEOF:
-		return -2;
-	case BHUNGRY:
-		return 1;
-	case BFATAL:
-	default:
-		return -1;
+	if (e != BNOERR) {
+		return e;
 	}
 
 	buf = (char *)incbuf;
@@ -174,18 +153,19 @@ botthink(BotState *b)
 	 * read up to INPUTMAXSIZE - 1 in read(), so
 	 * there is always one last byte available to zero
 	 */
-	buf[buflen] = '\0';
+	buf[buflen-1] = '\0';
 	metatab = Hmake();
 
 	switch (breakmsg(metatab, buf)) {
-	case BNOERR:
+	case MNOERR:
 		break;
 	case MMNOTFOUND:
 	case MIRCNOTFOUND:
 	case MMERR:
 	case MIRCERR:
-		/* TODO: log and ignore this message when it makes sense */
-		return -3;
+		/* TODO: log those errors */
+		Hfree(metatab);
+		return BPARSEERR;
 	}
 
 	/* TODO: see main.c comment */
@@ -198,5 +178,5 @@ botthink(BotState *b)
 	if (b->chans.nchan > 0)
 		botwritejoins(b);
 	Hfree(metatab);
-	return 0;
+	return BNOERR;
 }

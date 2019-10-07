@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "htab.h"
+#include "misc.h"
 
 static int Hcmp(char *, char *);
 static void tabgrow(Htab *);
@@ -102,10 +103,7 @@ tabgrow(Htab *t)
 	t->max *= 2;
 	t->nents = 0;
 	/* TODO: should use relloac,  but isnt working, figure out */
-	t->ents = calloc(t->max, sizeof(Hent));
-	if (t->ents == NULL)
-		/* TODO: abort() */
-		return;
+	t->ents = zemalloc(t->max * sizeof(Hent));
 	/* TODO: if we cant do relloac up there, use memcpy instead here */
 	for (i = 0; i < oldlen; i++)
 		if (oldents[i].hash)
@@ -179,15 +177,9 @@ Hmake(void)
 {
 	Htab *tmp;
 
-	tmp = calloc(1, sizeof(Htab));
-	if (tmp == NULL)
-		/* TODO: abort() ? */
-		return NULL;
+	tmp = zemalloc(sizeof(Htab));
 	/* TODO: set mem holders? */
 	tmp->max = HTABINIT;
-	tmp->ents = calloc(HTABINIT, sizeof(Hent));
-	if (tmp->ents == NULL)
-		/* TODO: abort() ? */
-		return NULL;
+	tmp->ents = zemalloc(HTABINIT * sizeof(Hent));
 	return tmp;
 }

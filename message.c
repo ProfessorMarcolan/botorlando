@@ -58,23 +58,14 @@ setflag(uint8_t flags, uint8_t flag)
 static int
 addemote(meta *m, emote e)
 {
-	emote *tmp;
-
 	if (m->emotes.v == NULL) {
-		m->emotes.v = malloc(EMINIT * sizeof(emote));
-		if (m->emotes.v == NULL) {
-			return -1;
-		}
+		m->emotes.v = emalloc(EMINIT * sizeof(emote));
 		m->emotes.nval = 0;
 		m->emotes.max = EMINIT;
 	} else if (m->emotes.nval >= m->emotes.max) {
-		tmp = realloc(m->emotes.v,
-			      (EMGROW * m->emotes.max) * sizeof(emote));
-		if (tmp == NULL) {
-			return -1;
-		}
+		m->emotes.v = erealloc(m->emotes.v, (EMGROW * m->emotes.max) *
+							    sizeof(emote));
 		m->emotes.max *= EMGROW;
-		m->emotes.v = tmp;
 	}
 	m->emotes.v[m->emotes.nval] = e;
 	return m->emotes.nval++;
@@ -97,6 +88,7 @@ privmsg(char *args)
 static int
 pongmsg(char *args)
 {
+	printf("PONG CALLED: %s\n", args);
 	return appendresp("PONG %s\r\n", args);
 }
 
@@ -148,34 +140,46 @@ static Htab irctab = {
 	.ents = ircents,
 };
 
+/* TODO: use strspn instead of strtok */
 int
 parseirc(char *p)
 {
 	char *cmd, *args, *tcmd;
 	int (*tmp)(char *);
+	char *debug;
+	debug = malloc(strlen(p)+1);
+	strcpy(debug, p);
 
 	tcmd = strtok(p, " ");
 	if (tcmd == NULL) {
-		fprintf(stderr, "tcmd NULL\n");
+		fprintf(stderr, "tcmd NULL\n%s\n", debug);
+		free(debug);
 		return -1;
 	}
-	Hget(&irctab, tcmd) != NULL ? (cmd = tcmd) : (cmd = strtok(NULL, " "));
+	cmd = Hget(&irctab, tcmd);
 	if (cmd == NULL) {
-		fprintf(stderr, "cmd (%s) not found\n", p);
-		return -1;
+		cmd = strtok(NULL, " ");
+		if (cmd == NULL) {
+			fprintf(stderr, "cmd (%s) not found\n%s\n", cmd, debug);
+			free(debug);
+			return -1;
+		}
 	}
 	args = strtok(NULL, "\0");
 	/* TODO: set non NULL values in ircgen so we could
 	 * ignore this check and use NULL value of Hget instead
 	 */
-	if (!Hhas(&irctab, args)) {
-		fprintf(stderr, "\nNO SUCH COMMAND %s\n", cmd);
+	if (!Hhas(&irctab, cmd)) {
+		fprintf(stderr, "command not found in irctab\n%s\n", debug);
+		free(debug);
 		return -1;
 	}
 	*(void **)(&tmp) = Hget(&irctab, cmd);
 	if (tmp == NULL) {
+		free(debug);
 		return 0;
 	}
+	free(debug);
 	return tmp(args);
 }
 

@@ -35,10 +35,8 @@ static const char *caps = "CAP REQ :twitch.tv/tags\r\n"
 void
 botinit(BotState *b)
 {
-	b->overrun = NULL;
-	b->olen = 0;
+	memset(b, 0, sizeof(BotState));
 	b->input = (char *)incbuf;
-	b->inlen = 0;
 	b->r = getdefresp();
 }
 
@@ -75,7 +73,8 @@ validatemsg(BotState *b)
 		return BEOF;
 	}
 	if (b->input[b->inlen - 1] != '\n' && b->input[b->inlen - 2] != '\r') {
-		tmp = realloc(b->overrun, b->olen + b->inlen);
+		/* +1 for '\0' byte */
+		tmp = realloc(b->overrun, b->olen + b->inlen + 1);
 		if (tmp == NULL)
 			return BMEMFATAL;
 
@@ -86,7 +85,7 @@ validatemsg(BotState *b)
 	}
 	/* we got a complete message, append leftover data */
 	if (b->overrun != NULL) {
-		tmp = realloc(b->overrun, b->olen + b->inlen);
+		tmp = realloc(b->overrun, b->olen + b->inlen + 1);
 		if (tmp == NULL)
 			return BMEMFATAL;
 
@@ -153,7 +152,7 @@ botthink(BotState *b)
 	 * read up to INPUTMAXSIZE - 1 in read(), so
 	 * there is always one last byte available to zero
 	 */
-	buf[buflen-1] = '\0';
+	buf[buflen] = '\0';
 	metatab = Hmake();
 
 	switch (breakmsg(metatab, buf)) {

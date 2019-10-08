@@ -1,4 +1,4 @@
-enum { MAX_INCOMEBUF = 8192 };
+enum { MAX_INCOMEBUF = 8193 };
 
 typedef struct channel channel;
 struct channel {

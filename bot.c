@@ -147,11 +147,6 @@ botthink(BotState *b)
 		buflen = b->olen;
 	}
 
-	/* TODO: test this, it's possible it's over writing
-	 * meaningful data with '\0'. Propably we should
-	 * read up to INPUTMAXSIZE - 1 in read(), so
-	 * there is always one last byte available to zero
-	 */
 	buf[buflen] = '\0';
 	metatab = Hmake();
 

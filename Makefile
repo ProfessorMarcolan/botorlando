@@ -1,7 +1,7 @@
 CC = gcc
 
 CPPFLAGS = -D_DEFAULT_SOURCE
-CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic -Wall -Werror -Wextra -Wno-unused-function#-flto -O3
+CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic -Wall -Werror -Wextra -Wno-unused-function #-flto -O3
 LDFLAGS = #-flto -O3
 
 SRC = $(wildcard *.c)
@@ -33,4 +33,4 @@ valgrind: $(PROG)
 fmt:
 	clang-format -i $(SRC) $(HDR)
 
-.PHONY: clean all run fmt
+.PHONY: all run clean gdb valgrind fmt

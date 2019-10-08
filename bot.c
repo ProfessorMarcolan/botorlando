@@ -9,7 +9,7 @@
 #include "bot.h"
 #include "misc.h"
 
-static uint8_t incbuf[MAX_INCOMEBUF];
+static uint8_t incbuf[MAX_INCBUF];
 
 static enum MessageError breakmsg(Map *, char *);
 static enum BotError validatemsg(BotState *);

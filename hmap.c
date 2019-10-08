@@ -89,7 +89,7 @@ mapaccess(Map *m, void *key)
 
 	i = nbucket(m, key);
 	if (i >= 0) {
-			return m->elems[i].data.any;
+		return m->elems[i].data.any;
 	}
 	return NULL;
 }

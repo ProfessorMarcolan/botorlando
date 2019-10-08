@@ -112,7 +112,7 @@ main(int argc, char **argv)
 			close(gnetfd);
 			break;
 		}
-		if ((bot.inlen = read(gnetfd, bot.input, MAX_INCOMEBUF - 1)) < 0) {
+		if ((bot.inlen = read(gnetfd, bot.input, MAX_INCBUF - 1)) < 0) {
 			fprintf(stderr, "read: %s\n", strerror(errno));
 			continue;
 		}

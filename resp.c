@@ -33,7 +33,6 @@ appendresp(const char *fmt, ...)
 	return n;
 }
 
-/* gets default response writer */
 Response *
 getdefresp()
 {

@@ -147,7 +147,7 @@ parseirc(char *p)
 	char *cmd, *args, *tcmd;
 	int (*tmp)(char *);
 	char *debug;
-	debug = malloc(strlen(p)+1);
+	debug = malloc(strlen(p) + 1);
 	strcpy(debug, p);
 
 	tcmd = strtok(p, " ");
@@ -160,6 +160,7 @@ parseirc(char *p)
 	if (cmd == NULL) {
 		cmd = strtok(NULL, " ");
 		if (cmd == NULL) {
+			fprintf(stderr, "cmd (%s) tcmd (%s)\n", cmd, tcmd);
 			fprintf(stderr, "cmd (%s) not found\n%s\n", cmd, debug);
 			free(debug);
 			return -1;
@@ -170,10 +171,16 @@ parseirc(char *p)
 	 * ignore this check and use NULL value of Hget instead
 	 */
 	if (!Hhas(&irctab, cmd)) {
+		/* ugly hack */
+		if (Hhas(&irctab, tcmd)) {
+			cmd = tcmd;
+			goto next;
+		}
 		fprintf(stderr, "command not found in irctab\n%s\n", debug);
 		free(debug);
 		return -1;
 	}
+next:
 	*(void **)(&tmp) = Hget(&irctab, cmd);
 	if (tmp == NULL) {
 		free(debug);

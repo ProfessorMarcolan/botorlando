@@ -4,14 +4,14 @@
 #include <unistd.h>
 
 #include "resp.h"
-#include "htab.h"
+#include "hmap.h"
 #include "message.h"
 #include "bot.h"
 #include "misc.h"
 
 static uint8_t incbuf[MAX_INCOMEBUF];
 
-static enum MessageError breakmsg(Htab *, char *);
+static enum MessageError breakmsg(Map *, char *);
 static enum BotError validatemsg(BotState *);
 static int botwritejoins(BotState *b);
 
@@ -97,7 +97,7 @@ validatemsg(BotState *b)
 }
 
 static enum MessageError
-breakmsg(Htab *metatab, char *buf)
+breakmsg(Map *metatab, char *buf)
 {
 	char *irc, *meta;
 	char *msg;
@@ -133,7 +133,7 @@ botthink(BotState *b)
 	char *buf;
 	size_t buflen;
 	enum BotError e;
-	Htab *metatab;
+	Map *metatab;
 
 	e = validatemsg(b);
 	if (e != BNOERR) {
@@ -148,7 +148,7 @@ botthink(BotState *b)
 	}
 
 	buf[buflen] = '\0';
-	metatab = Hmake();
+	metatab = makemap();
 
 	switch (breakmsg(metatab, buf)) {
 	case MNOERR:
@@ -158,7 +158,7 @@ botthink(BotState *b)
 	case MMERR:
 	case MIRCERR:
 		/* TODO: log those errors */
-		Hfree(metatab);
+		mapclear(metatab);
 		return BPARSEERR;
 	}
 
@@ -171,6 +171,6 @@ botthink(BotState *b)
 
 	if (b->chans.nchan > 0)
 		botwritejoins(b);
-	Hfree(metatab);
+	mapclear(metatab);
 	return BNOERR;
 }

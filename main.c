@@ -15,7 +15,7 @@
 
 #include "conn.h"
 #include "resp.h"
-#include "htab.h"
+#include "hmap.h"
 #include "message.h"
 #include "bot.h"
 #include "misc.h"

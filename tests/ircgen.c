@@ -5,11 +5,11 @@
 
 #include "../htab.c"
 
-static const char *hentsdecl = "static const Hent ircents[%u] = {\n";
+static const char *hentsdecl = "static const MapElem ircelems[%u] = {\n";
 static const char *hentsrow = "\t[%u] = { .hash=%u, .key=\"%s\", .data.%s=%s },\n";
 static const char *hentsclose = "};";
-static const char *htabfmt = "\nstatic const Htab irctab = {\n"
-			     "\t.max = %u, .nents = %u, .ents = ircents\n"
+static const char *htabfmt = "\nstatic const Map irctab = {\n"
+			     "\t.max = %u, .nelems = %u, .elems = ircents\n"
 			     "};\n";
 
 int

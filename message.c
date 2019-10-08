@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "misc.h"
-#include "htab.h"
+#include "hmap.h"
 #include "message.h"
 #include "resp.h"
 
@@ -107,7 +107,7 @@ nlistmsg(char *args)
 	return 0;
 }
 
-static Hent ircents[64] = {
+static MapElem ircelems[64] = {
 	[3] = { .hash = 13955, .key = "353", .data.any = NULL },
 	[5] = { .hash = 69784005, .key = "ROOMSTATE", .data.any = NULL },
 	[17] = { .hash = 14161, .key = "421", .data.fn = &errmsg },
@@ -134,10 +134,10 @@ static Hent ircents[64] = {
 	[56] = { .hash = 13108, .key = "004", .data.any = NULL },
 };
 
-static Htab irctab = {
+static Map irctab = {
 	.max = 64,
-	.nents = 24,
-	.ents = ircents,
+	.nelems = 24,
+	.elems = ircelems,
 };
 
 /* TODO: use strspn instead of strtok */
@@ -156,7 +156,7 @@ parseirc(char *p)
 		free(debug);
 		return -1;
 	}
-	cmd = Hget(&irctab, tcmd);
+	cmd = mapaccess(&irctab, tcmd);
 	if (cmd == NULL) {
 		cmd = strtok(NULL, " ");
 		if (cmd == NULL) {
@@ -170,9 +170,9 @@ parseirc(char *p)
 	/* TODO: set non NULL values in ircgen so we could
 	 * ignore this check and use NULL value of Hget instead
 	 */
-	if (!Hhas(&irctab, cmd)) {
-		/* ugly hack */
-		if (Hhas(&irctab, tcmd)) {
+	if (!maphasentry(&irctab, cmd)) {
+		/* ugly hack, see 53fd7ee3b5678e message */
+		if (maphasentry(&irctab, tcmd)) {
 			cmd = tcmd;
 			goto next;
 		}
@@ -180,8 +180,9 @@ parseirc(char *p)
 		free(debug);
 		return -1;
 	}
+
 next:
-	*(void **)(&tmp) = Hget(&irctab, cmd);
+	*(void **)(&tmp) = mapaccess(&irctab, cmd);
 	if (tmp == NULL) {
 		free(debug);
 		return 0;
@@ -194,7 +195,7 @@ next:
  * that would remove the first argument.
  */
 int
-parsemeta(Htab *metatab, char *buf)
+parsemeta(Map *metatab, char *buf)
 {
 	char *sem, *key, *value;
 	char *psem, *pkey;
@@ -206,7 +207,7 @@ parsemeta(Htab *metatab, char *buf)
 		if (!key || !value) {
 			continue;
 		}
-		Hput(metatab, key, value);
+		mapadd(metatab, key, value);
 	}
 	return 0;
 }

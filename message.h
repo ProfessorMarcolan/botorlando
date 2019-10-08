@@ -25,4 +25,4 @@ struct Message {
 enum MessageError { MNOERR, MMNOTFOUND, MIRCNOTFOUND, MMERR, MIRCERR };
 
 int parseirc(char *);
-int parsemeta(Htab *, char *);
+int parsemeta(Map *, char *);

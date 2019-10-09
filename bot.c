@@ -161,7 +161,6 @@ botthink(BotState *b)
 		return BPARSEERR;
 	}
 
-	/* TODO: see main.c comment */
 	if (b->overrun != NULL) {
 		free(b->overrun);
 		b->overrun = NULL;

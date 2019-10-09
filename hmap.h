@@ -1,5 +1,12 @@
 enum { HTABINIT = 32 };
 
+/* TODO: this implementation could be more generic
+ * if we accept collision comparision, hash and memory
+ * management functions, whence those function are
+ * supposed to be called are annotated in the
+ * implementation as NOTEs.
+ */
+
 typedef struct Map Map;
 typedef struct MapElem MapElem;
 
@@ -13,8 +20,6 @@ struct MapElem {
 	} data;
 };
 
-/* TODO: cmp, hash function? */
-/* TODO: mem hold fns? */
 struct Map {
 	size_t nelems; /* current number of elements */
 	size_t max; /* allocated number of elements */

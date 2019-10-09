@@ -42,6 +42,7 @@ maphash(void *key)
 {
 	uint32_t hash;
 
+	/* NOTE: call provided hash function */
 	hash = hashfn(key);
 	if (hash == 0)
 		return 1;
@@ -63,10 +64,13 @@ bucketloop:
 		delta++;
 		i = (hash + delta) & (m->max - 1);
 	}
-	/* not found */
+	/* no such element in map */
 	if (!m->elems[i].hash)
 		return -1;
-	/* collision */
+	/* NOTE: call collision compare functions */
+	/* collision found, deal with the usual case by stepping into
+	 * the next collision
+	 */
 	if (!cmpfn(m->elems[i].key, key)) {
 		delta++;
 		i = (hash + delta) & (m->max - 1);
@@ -96,20 +100,23 @@ mapaccess(Map *m, void *key)
 static void
 mapgrow(Map *m)
 {
-	size_t oldlen, i;
-	MapElem *oldents;
+	size_t oldmax, i;
+	MapElem *oldelems;
 
-	oldents = m->elems;
-	oldlen = m->max;
+	oldelems = m->elems;
+	oldmax = m->max;
 	m->max *= 2;
 	m->nelems = 0;
-	/* TODO: should use relloac,  but isnt working, figure out */
+	/* NOTE: malloc is used instead of realloc because
+	 * elements position in bucket indexes are calculated
+	 * based on m->max, thus this could lead to corrupting
+	 * or overwriting elements in map in future "mapadd" calls
+	 */
 	m->elems = zemalloc(m->max * sizeof(MapElem));
-	/* TODO: if we cant do relloac up there, use memcpy instead here */
-	for (i = 0; i < oldlen; i++)
-		if (oldents[i].hash)
-			addelem(m, oldents[i].key, oldents[i].data.any);
-	free(oldents);
+	for (i = 0; i < oldmax; i++)
+		if (oldelems[i].hash)
+			addelem(m, oldelems[i].key, oldelems[i].data.any);
+	free(oldelems);
 }
 
 static void
@@ -129,7 +136,7 @@ addelem(Map *m, void *key, void *data)
 	m->elems[i].key = key;
 	m->elems[i].data.any = data;
 	m->nelems++;
-	/* TODO: mem holders? */
+	/* NOTE: call memory managers */
 	/* 0.5 grow factor */
 	if (m->max < m->nelems * 2)
 		mapgrow(m);
@@ -144,7 +151,7 @@ mapadd(Map *m, void *key, void *data)
 	i = nbucket(m, key);
 	/* update current, if found */
 	if (i >= 0) {
-		/* TODO: call mem holders? */
+		/* NOTE: call mememory managers */
 		m->elems[i].data.any = data;
 		return;
 	}
@@ -157,10 +164,12 @@ mapdelete(Map *m, void *key)
 	long i;
 
 	i = nbucket(m, key);
-	/* if key exits */
+	/* if key is present in bucket */
 	if (i >= 0)
 		m->elems[i].hash = 0;
-	/* TODO: call mem holders? */
+	/* NOTE: call memory managers */
+	/* m->freek(t->elems[i].data); */
+	/* m->freev(t->elems[i].key); */
 }
 
 void
@@ -168,7 +177,7 @@ mapclear(Map *m)
 {
 	if (m == NULL)
 		return;
-	/* TODO: call mem holders? */
+	/* NOTE: call memory managers */
 	free(m->elems);
 	free(m);
 }
@@ -179,7 +188,9 @@ makemap(void)
 	Map *tmp;
 
 	tmp = zemalloc(sizeof(Map));
-	/* TODO: set mem holders? */
+	/* NOTE: set provided memory, compare and
+	 * hash functions
+	 */
 	tmp->max = HTABINIT;
 	tmp->elems = zemalloc(HTABINIT * sizeof(MapElem));
 	return tmp;

@@ -21,7 +21,7 @@
 #include "misc.h"
 
 static void sysfatal(char *, ...);
-static void sighandler(int);
+static void sighandler(int, siginfo_t *, void *);
 
 static int gnetfd;
 
@@ -40,11 +40,12 @@ sysfatal(char *fmt, ...)
  * was, thus in best scanario it breaks the parser.
  * Never call exit anywhere else than here, use abort instead.
  */
-/* TODO: use posix portable version: sigaction(2) */
 static void
-sighandler(int sig)
+sighandler(int sig, siginfo_t *siginfo, void *context)
 {
 	USED(sig)
+	USED(siginfo)
+	USED(context)
 	if (errno > 0) {
 		fprintf(stderr, "bot: %s\n", strerror(errno));
 	}
@@ -62,7 +63,7 @@ main(int argc, char **argv)
 	int i;
 	char *user, *passwd;
 	BotState bot;
-	void (*sigr)(int);
+	struct sigaction sign;
 
 	user = getenv("TWITCH_USER");
 	passwd = getenv("TWITCH_OAUTH");
@@ -73,18 +74,18 @@ main(int argc, char **argv)
 		sysfatal("bot: TWITCH_OAUTH not found\n");
 	}
 
-	sigr = signal(SIGINT, sighandler);
-	if (sigr == SIG_ERR)
-		sysfatal("bot: cannot register SIGINT: %s\n", strerror(errno));
-	sigr = signal(SIGTERM, sighandler);
-	if (sigr == SIG_ERR)
-		sysfatal("bot: cannot register SIGTERM: %s\n", strerror(errno));
-	sigr = signal(SIGQUIT, sighandler);
-	if (sigr == SIG_ERR)
-		sysfatal("bot: cannot register SIGQUIT: %s\n", strerror(errno));
-	sigr = signal(SIGABRT, sighandler);
-	if (sigr == SIG_ERR)
-		sysfatal("bot: cannot register SIGABRT: %s\n", strerror(errno));
+	memset(&sign, 0, sizeof sign);
+	sign.sa_sigaction = &sighandler;
+	/* make sigaction use sa_sigaction field, not sa_handler */
+	sign.sa_flags = SA_SIGINFO;
+	if (sigaction(SIGINT, &sign, NULL) != 0)
+		sysfatal("bot: signal: %s\n", strerror(errno));
+	if (sigaction(SIGTERM, &sign, NULL) != 0)
+		sysfatal("bot: signal: %s\n", strerror(errno));
+	if (sigaction(SIGQUIT, &sign, NULL) != 0)
+		sysfatal("bot: signal: %s\n", strerror(errno));
+	if (sigaction(SIGABRT, &sign, NULL) != 0)
+		sysfatal("bot: signal: %s\n", strerror(errno));
 
 	botinit(&bot);
 	if (argc < 2)

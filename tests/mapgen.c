@@ -6,13 +6,14 @@
 #include "../hmap.c"
 #include "../misc.c"
 
+static const char *prelog = "/* DO NOT EDIT - generated from test/mapgen.c */\n"
 static const char *hentsdecl = "static MapElem %selems[%u] = {\n";
 static const char *hentsrow =
 	"\t[%u] = { .hash = %u, .key = \"%s\", .data.fn = %s },\n";
 static const char *hentsclose = "};";
 static const char *htabfmt = "\nstatic Map %stab = {\n"
 			     "\t.max = %u,\n\t.nelems = %u,\n\t.elems = %selems,\n"
-			     "};\n";
+			     "};\n\n";
 
 int
 main(int argc, char **argv)
@@ -82,7 +83,7 @@ main(int argc, char **argv)
 			goto err;
 		}
 	}
-
+	puts(prelog);
 	printf(hentsdecl, name, t->max);
 	for (i = 0; i < t->max; i++) {
 		if (t->elems[i].hash) {

@@ -28,6 +28,7 @@ enum usermode {
 	TURBOUSER = 1 << 4,
 };
 
+static int noopmsg(char *);
 static int nlistmsg(char *);
 static int errmsg(char *);
 static int pongmsg(char *);
@@ -107,32 +108,39 @@ nlistmsg(char *args)
 	return 0;
 }
 
+static int
+noopmsg(char *args)
+{
+	USED(args)
+	return 0;
+}
+
 static MapElem ircelems[64] = {
-	[3] = { .hash = 13955, .key = "353", .data.fn = NULL },
-	[5] = { .hash = 69784005, .key = "ROOMSTATE", .data.fn = NULL },
+	[3] = { .hash = 13955, .key = "353", .data.fn = &noopmsg },
+	[5] = { .hash = 69784005, .key = "ROOMSTATE", .data.fn = &noopmsg },
 	[17] = { .hash = 14161, .key = "421", .data.fn = &errmsg },
-	[20] = { .hash = 138641172, .key = "RECONNECT", .data.fn = NULL },
-	[21] = { .hash = 120662741, .key = "USERNOTICE", .data.fn = NULL },
-	[22] = { .hash = 13974, .key = "366", .data.fn = NULL },
-	[30] = { .hash = 324574, .key = "JOIN", .data.fn = NULL },
-	[32] = { .hash = 18272, .key = "CAP", .data.fn = NULL },
-	[34] = { .hash = 13986, .key = "372", .data.fn = NULL },
-	[35] = { .hash = 5398947, .key = "NAMES", .data.fn = NULL },
-	[36] = { .hash = 159563556, .key = "HOSTTARGET", .data.fn = NULL },
-	[37] = { .hash = 157693028, .key = "CLEARCHAT", .data.fn = NULL },
-	[38] = { .hash = 153014501, .key = "GLOBALUSERSTATE", .data.fn = NULL },
+	[20] = { .hash = 138641172, .key = "RECONNECT", .data.fn = &noopmsg },
+	[21] = { .hash = 120662741, .key = "USERNOTICE", .data.fn = &noopmsg },
+	[22] = { .hash = 13974, .key = "366", .data.fn = &noopmsg },
+	[30] = { .hash = 324574, .key = "JOIN", .data.fn = &noopmsg },
+	[32] = { .hash = 18272, .key = "CAP", .data.fn = &noopmsg },
+	[34] = { .hash = 13986, .key = "372", .data.fn = &noopmsg },
+	[35] = { .hash = 5398947, .key = "NAMES", .data.fn = &noopmsg },
+	[36] = { .hash = 159563556, .key = "HOSTTARGET", .data.fn = &noopmsg },
+	[37] = { .hash = 157693028, .key = "CLEARCHAT", .data.fn = &noopmsg },
+	[38] = { .hash = 153014501, .key = "GLOBALUSERSTATE", .data.fn = &noopmsg },
 	[39] = { .hash = 91140647, .key = "PRIVMSG", .data.fn = &privmsg },
 	[40] = { .hash = 347687, .key = "PING", .data.fn = &pongmsg },
-	[41] = { .hash = 13989, .key = "375", .data.fn = NULL },
-	[42] = { .hash = 13990, .key = "376", .data.fn = NULL },
-	[49] = { .hash = 13105, .key = "001", .data.fn = NULL },
-	[50] = { .hash = 13106, .key = "002", .data.fn = NULL },
-	[51] = { .hash = 13107, .key = "003", .data.fn = NULL },
-	[52] = { .hash = 345716, .key = "PART", .data.fn = NULL },
-	[53] = { .hash = 87330165, .key = "NOTICE", .data.fn = NULL },
-	[54] = { .hash = 175693045, .key = "USERSTATE", .data.fn = NULL },
-	[55] = { .hash = 9860855, .key = "CLEARMSG", .data.fn = NULL },
-	[56] = { .hash = 13108, .key = "004", .data.fn = NULL },
+	[41] = { .hash = 13989, .key = "375", .data.fn = &noopmsg },
+	[42] = { .hash = 13990, .key = "376", .data.fn = &noopmsg },
+	[49] = { .hash = 13105, .key = "001", .data.fn = &noopmsg },
+	[50] = { .hash = 13106, .key = "002", .data.fn = &noopmsg },
+	[51] = { .hash = 13107, .key = "003", .data.fn = &noopmsg },
+	[52] = { .hash = 345716, .key = "PART", .data.fn = &noopmsg },
+	[53] = { .hash = 87330165, .key = "NOTICE", .data.fn = &noopmsg },
+	[54] = { .hash = 175693045, .key = "USERSTATE", .data.fn = &noopmsg },
+	[55] = { .hash = 9860855, .key = "CLEARMSG", .data.fn = &noopmsg },
+	[56] = { .hash = 13108, .key = "004", .data.fn = &noopmsg },
 };
 
 static Map irctab = {
@@ -168,25 +176,16 @@ parseirc(char *p)
 		}
 	}
 	args = strtok(NULL, "\0");
-	/* TODO: set non NULL values in ircgen so we could
-	 * ignore this check and use NULL value of Hget instead
-	 */
-	if (!maphasentry(&irctab, cmd)) {
-		/* ugly hack, see 53fd7ee3b5678e message */
-		if (maphasentry(&irctab, tcmd)) {
-			cmd = tcmd;
-			goto next;
-		}
-		fprintf(stderr, "command not found in irctab\n%s\n", debug);
-		free(debug);
-		return -1;
-	}
 
-next:
 	*(void **)(&tmp) = mapaccess(&irctab, cmd);
 	if (tmp == NULL) {
-		free(debug);
-		return 0;
+		/* ugly hack, see 53fd7ee3b5678e message */
+		*(void **)(&tmp) = mapaccess(&irctab, tcmd);
+		if (tmp == NULL) {
+			free(debug);
+			fprintf(stderr, "command not found in irctab\n%s\n", debug);
+			return -1;
+		}
 	}
 	free(debug);
 	return tmp(args);

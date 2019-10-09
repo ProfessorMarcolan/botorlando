@@ -1,14 +1,9 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <unistd.h>
-#include <netdb.h>
 
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -57,6 +52,7 @@ sighandler(int sig, siginfo_t *siginfo, void *context)
 	exit(EXIT_FAILURE);
 }
 
+/* TODO: encode/decode utf8 */
 int
 main(int argc, char **argv)
 {

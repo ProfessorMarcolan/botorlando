@@ -10,7 +10,7 @@ OBJ = $(SRC:.c=.o)
 PROG = bot
 IP = irc.chat.twitch.tv:6667
 
-all: $(PROG)
+all: fmt $(PROG)
 
 .o: $(SRC)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $< $>

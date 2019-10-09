@@ -128,7 +128,9 @@ static MapElem ircelems[64] = {
 	[35] = { .hash = 5398947, .key = "NAMES", .data.fn = &noopmsg },
 	[36] = { .hash = 159563556, .key = "HOSTTARGET", .data.fn = &noopmsg },
 	[37] = { .hash = 157693028, .key = "CLEARCHAT", .data.fn = &noopmsg },
-	[38] = { .hash = 153014501, .key = "GLOBALUSERSTATE", .data.fn = &noopmsg },
+	[38] = { .hash = 153014501,
+		 .key = "GLOBALUSERSTATE",
+		 .data.fn = &noopmsg },
 	[39] = { .hash = 91140647, .key = "PRIVMSG", .data.fn = &privmsg },
 	[40] = { .hash = 347687, .key = "PING", .data.fn = &pongmsg },
 	[41] = { .hash = 13989, .key = "375", .data.fn = &noopmsg },
@@ -183,7 +185,8 @@ parseirc(char *p)
 		*(void **)(&tmp) = mapaccess(&irctab, tcmd);
 		if (tmp == NULL) {
 			free(debug);
-			fprintf(stderr, "command not found in irctab\n%s\n", debug);
+			fprintf(stderr, "command not found in irctab\n%s\n",
+				debug);
 			return -1;
 		}
 	}

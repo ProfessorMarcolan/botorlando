@@ -1,11 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include <netdb.h>
+
+#include <unistd.h>
 
 #include "misc.h"
 
@@ -13,6 +11,7 @@ static int parseaddr(char *, char *, char *);
 
 /* 253 domain name + 5 port (1<<16) + 1 null + 1 ':'*/
 enum { MAXPORTSIZE = 5, MAXDOMAINBUFSIZE = 253 + MAXPORTSIZE + 1 + 1 };
+
 static int
 parseaddr(char *address, char *host, char *port)
 {
@@ -38,40 +37,48 @@ parseaddr(char *address, char *host, char *port)
 int
 dial(char *address)
 {
-	int fd, porti;
+	int fd;
 	char *host, *port;
-	struct sockaddr_in addr;
-	struct hostent *url;
+	struct addrinfo hints, *resp, *rp;
 
-	port = NULL;
+	fd = -1;
 	host = emalloc(MAXDOMAINBUFSIZE);
 	port = emalloc(6);
-	if (parseaddr(address, host, port) < 0) {
-		fd = -1;
-		goto ret;
+	if (parseaddr(address, host, port) < 0)
+		goto err;
+
+	resp = NULL;
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; /* allow ipv4 orr ipv6 */
+	hints.ai_flags = AI_NUMERICSERV; /* avoid name lookup for port */
+	hints.ai_socktype = SOCK_STREAM;
+	if (getaddrinfo(host, port, &hints, &resp) != 0)
+		/* TODO: set our implementation of errno with gai_strerror(error))
+		 * for some reason getaddrinfo does not set errno and we print an
+		 * useless message on main.
+		 */
+		goto err;
+
+	for (rp = resp; rp != NULL; rp = rp->ai_next) {
+		fd = socket(resp->ai_family, resp->ai_socktype,
+			    resp->ai_protocol);
+		if ((fd) < 0)
+			continue;
+		if (connect(fd, resp->ai_addr, resp->ai_addrlen) == 0)
+			/* success */
+			break;
+		close(fd);
 	}
 
-	porti = atoi(port);
-	url = gethostbyname(host);
-	if (!url) {
-		fd = -1;
-		goto ret;
-	}
+	if (rp == NULL)
+		/* no addressse succeeded */
+		/* TODO: set our implementation of errno */
+		goto err;
 
-	memset(&addr, 0, sizeof addr);
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(porti);
-	addr.sin_addr = *((struct in_addr *)url->h_addr);
-	fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (fd < 0)
-		goto ret;
-
-	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		fd = -1;
-		goto ret;
-	}
-ret:
+err:
 	free(host);
 	free(port);
+	if (resp != NULL)
+		freeaddrinfo(resp);
 	return fd;
 }

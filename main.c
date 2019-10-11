@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#include "sqlite3.h"
+
 #include "conn.h"
 #include "resp.h"
 #include "hmap.h"
@@ -19,6 +21,7 @@ static void sysfatal(char *, ...);
 static void sighandler(int, siginfo_t *, void *);
 
 static int gnetfd;
+static sqlite3 *db;
 
 static void
 sysfatal(char *fmt, ...)
@@ -49,6 +52,8 @@ sighandler(int sig, siginfo_t *siginfo, void *context)
 			fprintf(stderr, "close: %s\n", strerror(errno));
 		}
 	}
+	if (db != NULL)
+		sqlite3_close(db);
 	exit(EXIT_FAILURE);
 }
 
@@ -70,6 +75,9 @@ main(int argc, char **argv)
 		sysfatal("bot: TWITCH_OAUTH not found\n");
 	}
 
+	if (sqlite3_open("bot.db", &db))
+		sysfatal("bot: db: %s\n", sqlite3_errmsg(db));
+
 	memset(&sign, 0, sizeof sign);
 	sign.sa_sigaction = &sighandler;
 	/* make sigaction use sa_sigaction field, not sa_handler */
@@ -84,6 +92,8 @@ main(int argc, char **argv)
 		sysfatal("bot: signal: %s\n", strerror(errno));
 
 	botinit(&bot);
+	bot->db = db;
+
 	if (argc < 2)
 		sysfatal("usage: host:port [channels...]\n");
 	for (i = 2; i < argc; i++)

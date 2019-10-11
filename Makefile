@@ -2,7 +2,7 @@ CC = gcc
 
 CPPFLAGS = -D_DEFAULT_SOURCE
 CFLAGS = -O0 -fno-builtin -g -std=c99 -pedantic -Wall -Werror -Wextra -Wno-unused-function #-flto -O3
-LDFLAGS = #-flto -O3
+LDFLAGS =#-flto -O3
 
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)
@@ -16,7 +16,7 @@ all: fmt $(PROG)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $< $>
 
 $(PROG): $(OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ sqlite3.o $^  -ldl -lpthread
 
 run: $(PROG)
 	@sh -c 'env `cat env.sh` ./$(PROG) $(IP) `cat joins`'

@@ -21,6 +21,8 @@ struct BotState {
 
 	char *overrun;
 	size_t olen;
+
+	sqlite3 *db;
 };
 
 int botjoinchan(BotState *, char *);
